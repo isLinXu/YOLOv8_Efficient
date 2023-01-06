@@ -36,7 +36,7 @@ pip install ultralytics
 ```shell
 git clone git@github.com:isLinXu/YOLOv8_Efficient.git
 cd YOLOv8_Efficient
-cd ultralytics
+cd ultralytics-master
 pip install -e .
 ```
 
