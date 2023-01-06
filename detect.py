@@ -51,7 +51,7 @@ from ultralytics import YOLO
 
 
 def run(
-        weights=ROOT / 'yolov5s.pt',  # model path or triton URL
+        weights=ROOT / 'weights/yolov8n.pt',  # model path or triton URL
         source="0",  # ROOT / '0',  # file/dir/URL/glob/screen/0(webcam)
         data=ROOT / 'data/coco128.yaml',  # dataset.yaml path
         imgsz=(640, 640),  # inference size (height, width)

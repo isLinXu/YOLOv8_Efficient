@@ -72,14 +72,14 @@ GIT_INFO = check_git_info()
 
 
 def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictionary
-    save_dir, epochs, batch_size, weights, \
+    task, save_dir, epochs, batch_size, weights, \
         lr0, lrf, momentum, weight_decay, \
         warmup_epochs, warmup_momentum, warmup_bias_lr, \
         box, cls, cls_pw, obj, obj_pw, iou_t, \
         anchor_t, fl_gamma, label_smoothing, \
         nbs, overlap_mask, mask_ratio, dropout, \
         single_cls, evolve, data, cfg, resume, noval, nosave, workers, freeze = \
-        Path(opt.save_dir), opt.epochs, opt.batch_size, opt.weights, \
+        opt.task, Path(opt.save_dir), opt.epochs, opt.batch_size, opt.weights, \
             opt.lr0, opt.lrf, opt.momentum, opt.weight_decay, \
             opt.warmup_epochs, opt.warmup_momentum, opt.warmup_bias_lr, \
             opt.box, opt.cls, opt.cls_pw, opt.obj, opt.obj_pw, opt.iou_t, \
@@ -141,20 +141,25 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
 
         # load model
         model = YOLO(weights)
+
+
         model.train(data=data, epochs=epochs, lr0=lr0, lrf=lrf, batch=batch_size, momentum=momentum, weight_decay=weight_decay,
                     warmup_epochs=warmup_epochs, warmup_momentum=warmup_momentum, warmup_bias_lr=warmup_bias_lr,
-                    box=box, cls=cls, device="0")  # DDP mode
+                    box=box, cls=cls, device=device)  # DDP mode
 
-        # model = YOLO(cfg or ckpt['model'].yaml, ch=3, nc=nc, anchors=hyp.get('anchors')).to(device)  # create
         exclude = ['anchor'] if (cfg or hyp.get('anchors')) and not resume else []  # exclude keys
         csd = ckpt['model'].float().state_dict()  # checkpoint state_dict as FP32
         # csd = intersect_dicts(csd, model.state_dict(), exclude=exclude)  # intersect
         # model.load_state_dict(csd, strict=False)  # load
         LOGGER.info(f'Transferred {len(csd)}/{len(model.state_dict())} items from {weights}')  # report
     else:
+
         model = YOLO(weights)
-        model.train(data=data, epochs=300, lr0=0.01,
-                    device="0")  # DDP mode
+        model.train(data=data, epochs=epochs, lr0=lr0, lrf=lrf, batch=batch_size, momentum=momentum,
+                   weight_decay=weight_decay,
+                   warmup_epochs=warmup_epochs, warmup_momentum=warmup_momentum, warmup_bias_lr=warmup_bias_lr,
+                   box=box, cls=cls, device=device)  # DDP mode
+        # DDP mode
         # model = YOLO(cfg, ch=3, nc=nc, anchors=hyp.get('anchors')).to(device)  # create
     amp = check_amp(model)  # check AMP
 
@@ -213,7 +218,8 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
 
 def parse_opt(known=False):
     parser = argparse.ArgumentParser()
-    parser.add_argument('--device', default='', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
+    parser.add_argument('--task', default='detect', help='select train task, i.e.  detect or classify, seg')
+    parser.add_argument('--device', default='0', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--epochs', type=int, default=100, help='total training epochs')
     parser.add_argument('--batch-size','--batch',  type=int, default=4,
                         help='total batch size for all GPUs, -1 for autobatch')
