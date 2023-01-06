@@ -15,17 +15,17 @@ Usage - sources:
                                                      'rtsp://example.com/media.mp4'  # RTSP, RTMP, HTTP stream
 
 Usage - formats:
-    $ python detect.py --weights yolov5s.pt                 # PyTorch
-                                 yolov5s.torchscript        # TorchScript
-                                 yolov5s.onnx               # ONNX Runtime or OpenCV DNN with --dnn
-                                 yolov5s_openvino_model     # OpenVINO
-                                 yolov5s.engine             # TensorRT
-                                 yolov5s.mlmodel            # CoreML (macOS-only)
-                                 yolov5s_saved_model        # TensorFlow SavedModel
-                                 yolov5s.pb                 # TensorFlow GraphDef
-                                 yolov5s.tflite             # TensorFlow Lite
-                                 yolov5s_edgetpu.tflite     # TensorFlow Edge TPU
-                                 yolov5s_paddle_model       # PaddlePaddle
+    $ python detect.py --weights yolov8s.pt                 # PyTorch
+                                 yolov8s.torchscript        # TorchScript
+                                 yolov8s.onnx               # ONNX Runtime or OpenCV DNN with --dnn
+                                 yolov8s_openvino_model     # OpenVINO
+                                 yolov8s.engine             # TensorRT
+                                 yolov8s.mlmodel            # CoreML (macOS-only)
+                                 yolov8s_saved_model        # TensorFlow SavedModel
+                                 yolov8s.pb                 # TensorFlow GraphDef
+                                 yolov8s.tflite             # TensorFlow Lite
+                                 yolov8s_edgetpu.tflite     # TensorFlow Edge TPU
+                                 yolov8s_paddle_model       # PaddlePaddle
 """
 
 import argparse
