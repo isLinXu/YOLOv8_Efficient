@@ -128,4 +128,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 /weights/
-/data/coco128/
+/data/datasets/coco128/
+/data/datasets/coco128/
+/data/datasets/voc128/
