@@ -131,3 +131,4 @@ dmypy.json
 /data/datasets/coco128/
 /data/datasets/coco128/
 /data/datasets/voc128/
+/runs/
