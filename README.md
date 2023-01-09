@@ -153,6 +153,29 @@ python detect.py --weights yolov8s.pt --source 0                               #
 
 ### val
 
+#### Usage:
+
+```shell
+python val.py --weights yolov8n.pt --data coco128.yaml --img 640
+```
+
+#### Usage - formats:
+
+
+```shell
+python val.py --weights yolov8s.pt                 # PyTorch
+                              yolov8s.torchscript        # TorchScript
+                              yolov8s.onnx               # ONNX Runtime or OpenCV DNN with --dnn
+                              yolov8s_openvino_model     # OpenVINO
+                              yolov8s.engine             # TensorRT
+                              yolov8s.mlmodel            # CoreML (macOS-only)
+                              yolov8s_saved_model        # TensorFlow SavedModel
+                              yolov8s.pb                 # TensorFlow GraphDef
+                              yolov8s.tflite             # TensorFlow Lite
+                              yolov8s_edgetpu.tflite     # TensorFlow Edge TPU
+                              yolov8s_paddle_model       # PaddlePaddle
+```
+
 
 
 
