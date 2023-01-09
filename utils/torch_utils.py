@@ -105,9 +105,14 @@ def device_count():
         return 0
 
 
+def run_start_log(device=''):
+    # device = None or 'cpu' or 0 or '0' or '0,1,2,3'
+    s = f'YOLOv8 🚀 {git_describe() or file_date()} Python-{platform.python_version()} torch-{torch.__version__} '
+    LOGGER.info(s)
+
 def select_device(device='', batch_size=0, newline=True):
     # device = None or 'cpu' or 0 or '0' or '0,1,2,3'
-    s = f'YOLOv5 🚀 {git_describe() or file_date()} Python-{platform.python_version()} torch-{torch.__version__} '
+    s = f'YOLOv8 🚀 {git_describe() or file_date()} Python-{platform.python_version()} torch-{torch.__version__} '
     device = str(device).strip().lower().replace('cuda:', '').replace('none', '')  # to string, 'cuda:0' to '0'
     cpu = device == 'cpu'
     mps = device == 'mps'  # Apple Metal Performance Shaders (MPS)
