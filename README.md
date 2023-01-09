@@ -23,7 +23,7 @@ If you have more questions and ideas, please feel free to discuss them together.
 
 ![](./img/demo.png)
 
-- update wandb train log: [log](https://wandb.ai/glenn-jocher/YOLOv8
+- wandb train log:  [log](https://wandb.ai/glenn-jocher/YOLOv8
   https://wandb.ai/glenn-jocher/YOLOv8)
 
 ## New's
