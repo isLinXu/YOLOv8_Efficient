@@ -63,7 +63,7 @@ from utils.loss import ComputeLoss
 from utils.metrics import fitness
 from utils.plots import plot_evolve
 from utils.torch_utils import (EarlyStopping, ModelEMA, de_parallel, select_device, smart_DDP, smart_optimizer,
-                               smart_resume, torch_distributed_zero_first)
+                               smart_resume, torch_distributed_zero_first, run_start_log)
 
 LOCAL_RANK = int(os.getenv('LOCAL_RANK', -1))  # https://pytorch.org/docs/stable/elastic/run.html
 RANK = int(os.getenv('RANK', -1))
@@ -71,15 +71,15 @@ WORLD_SIZE = int(os.getenv('WORLD_SIZE', 1))
 GIT_INFO = check_git_info()
 
 
-def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictionary
-    task, save_dir, epochs, batch_size, weights, \
+def train(hyp, opt, callbacks):  # hyp is path/to/hyp.yaml or hyp dictionary
+    task, device, save_dir, epochs, batch_size, weights, \
         lr0, lrf, momentum, weight_decay, \
         warmup_epochs, warmup_momentum, warmup_bias_lr, \
         box, cls, cls_pw, obj, obj_pw, iou_t, \
         anchor_t, fl_gamma, label_smoothing, \
         nbs, overlap_mask, mask_ratio, dropout, \
         single_cls, evolve, data, cfg, resume, noval, nosave, workers, freeze = \
-        opt.task, Path(opt.save_dir), opt.epochs, opt.batch_size, opt.weights, \
+        opt.task, opt.device, Path(opt.save_dir), opt.epochs, opt.batch_size, opt.weights, \
             opt.lr0, opt.lrf, opt.momentum, opt.weight_decay, \
             opt.warmup_epochs, opt.warmup_momentum, opt.warmup_bias_lr, \
             opt.box, opt.cls, opt.cls_pw, opt.obj, opt.obj_pw, opt.iou_t, \
@@ -87,6 +87,7 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
             opt.nbs, opt.overlap_mask, opt.mask_ratio, opt.dropout, \
             opt.single_cls, opt.evolve, opt.data, opt.cfg, \
             opt.resume, opt.noval, opt.nosave, opt.workers, opt.freeze
+
     callbacks.run('on_pretrain_routine_start')
 
     # Directories
@@ -122,7 +123,7 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
 
     # Config
     plots = not evolve and not opt.noplots  # create plots
-    cuda = device.type != 'cpu'
+    # cuda = device.type != 'cpu'
     init_seeds(opt.seed + 1 + RANK, deterministic=True)
     with torch_distributed_zero_first(LOCAL_RANK):
         data_dict = data_dict or check_dataset(data)  # check if None
@@ -134,6 +135,7 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
     # Model
     check_suffix(weights, '.pt')  # check weights
     pretrained = weights.endswith('.pt')
+
     if pretrained:
         with torch_distributed_zero_first(LOCAL_RANK):
             weights = attempt_download(weights)  # download if not found locally
@@ -142,25 +144,20 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
         # load model
         model = YOLO(weights)
 
-
         model.train(data=data, epochs=epochs, lr0=lr0, lrf=lrf, batch=batch_size, momentum=momentum, weight_decay=weight_decay,
                     warmup_epochs=warmup_epochs, warmup_momentum=warmup_momentum, warmup_bias_lr=warmup_bias_lr,
                     box=box, cls=cls, device=device)  # DDP mode
 
         exclude = ['anchor'] if (cfg or hyp.get('anchors')) and not resume else []  # exclude keys
         csd = ckpt['model'].float().state_dict()  # checkpoint state_dict as FP32
-        # csd = intersect_dicts(csd, model.state_dict(), exclude=exclude)  # intersect
-        # model.load_state_dict(csd, strict=False)  # load
         LOGGER.info(f'Transferred {len(csd)}/{len(model.state_dict())} items from {weights}')  # report
     else:
-
+        # DDP mode
         model = YOLO(weights)
         model.train(data=data, epochs=epochs, lr0=lr0, lrf=lrf, batch=batch_size, momentum=momentum,
                    weight_decay=weight_decay,
                    warmup_epochs=warmup_epochs, warmup_momentum=warmup_momentum, warmup_bias_lr=warmup_bias_lr,
                    box=box, cls=cls, device=device)  # DDP mode
-        # DDP mode
-        # model = YOLO(cfg, ch=3, nc=nc, anchors=hyp.get('anchors')).to(device)  # create
     amp = check_amp(model)  # check AMP
 
     # Freeze
@@ -201,19 +198,11 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
     best_fitness, start_epoch = 0.0, 0
     if pretrained:
         if resume:
+            model = YOLO()
+            # model.resume()
             best_fitness, start_epoch, epochs = smart_resume(ckpt, optimizer, ema, weights, epochs, resume)
         del ckpt, csd
 
-    # DP mode
-    if cuda and RANK == -1 and torch.cuda.device_count() > 1:
-        LOGGER.warning('WARNING ⚠️ DP not recommended, use torch.distributed.run for best DDP Multi-GPU results.\n'
-                       'See Multi-GPU Tutorial at https://github.com/ultralytics/yolov5/issues/475 to get started.')
-        model = torch.nn.DataParallel(model)
-
-    # SyncBatchNorm
-    if opt.sync_bn and cuda and RANK != -1:
-        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model).to(device)
-        LOGGER.info('Using SyncBatchNorm()')
 
 
 def parse_opt(known=False):
@@ -294,7 +283,8 @@ def main(opt, callbacks=Callbacks()):
     # Checks
     if RANK in {-1, 0}:
         print_args(vars(opt))
-        check_git_status()
+        # check_git_status()
+        run_start_log()
         check_requirements()
 
     # Resume (from specified or most recent last.pt)
@@ -324,7 +314,7 @@ def main(opt, callbacks=Callbacks()):
         opt.save_dir = str(increment_path(Path(opt.project) / opt.name, exist_ok=opt.exist_ok))
 
     # DDP mode
-    device = select_device(opt.device, batch_size=opt.batch_size)
+    # device = select_device(opt.device, batch_size=opt.batch_size)
     if LOCAL_RANK != -1:
         msg = 'is not compatible with YOLOv5 Multi-GPU DDP training'
         assert not opt.image_weights, f'--image-weights {msg}'
@@ -333,12 +323,12 @@ def main(opt, callbacks=Callbacks()):
         assert opt.batch_size % WORLD_SIZE == 0, f'--batch-size {opt.batch_size} must be multiple of WORLD_SIZE'
         assert torch.cuda.device_count() > LOCAL_RANK, 'insufficient CUDA devices for DDP command'
         torch.cuda.set_device(LOCAL_RANK)
-        device = torch.device('cuda', LOCAL_RANK)
+        # device = torch.device('cuda', LOCAL_RANK)
         dist.init_process_group(backend="nccl" if dist.is_nccl_available() else "gloo")
 
     # Train
     if not opt.evolve:
-        train(opt.hyp, opt, device, callbacks)
+        train(opt.hyp, opt, callbacks)
 
     # Evolve hyperparameters (optional)
     else:
@@ -419,7 +409,7 @@ def main(opt, callbacks=Callbacks()):
                 hyp[k] = round(hyp[k], 5)  # significant digits
 
             # Train mutation
-            results = train(hyp.copy(), opt, device, callbacks)
+            results = train(hyp.copy(), opt, callbacks)
             callbacks = Callbacks()
             # Write mutation results
             keys = ('metrics/precision', 'metrics/recall', 'metrics/mAP_0.5', 'metrics/mAP_0.5:0.95', 'val/box_loss',
