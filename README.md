@@ -17,11 +17,21 @@ If you have more questions and ideas, please feel free to discuss them together.
 
 
 
+
+
 ## Performance
 
 ![](./img/demo.png)
 
+- update wandb train log: [log](https://wandb.ai/glenn-jocher/YOLOv8
+  https://wandb.ai/glenn-jocher/YOLOv8)
 
+## New's
+- ... ...
+- 2023/01/09 - add val.py and fix some error
+- 2023/01/07 - fix some error and warning 
+- 2023/01/06 - add train.py, detect.py and README.md
+- 2023/01/06 - Create and Init a new repository
 
 ## Quickstart
 
@@ -30,6 +40,7 @@ If you have more questions and ideas, please feel free to discuss them together.
   [**Ultralytics YOLO Docs**](https://v8docs.ultralytics.com/sdk/)
 
 - [ultralytics assets releases](https://github.com/ultralytics/assets/releases/)
+
 
 ### 1. CLI
 
@@ -153,6 +164,12 @@ python detect.py --weights yolov8s.pt --source 0                               #
 
 ### val
 
+- i.e coco128:
+
+>| ![](./img/val_batch1_pred.jpg) | ![](./img/F1_curve.png) | ![](./img/P_curve.png)          |
+> | ------------------------------ | ----------------------- | ------------------------------- |
+>| ![](./img/PR_curve.png)        | ![](./img/R_curve.png)  | ![](./img/confusion_matrix.png) |
+
 #### Usage:
 
 ```shell
@@ -176,7 +193,8 @@ python val.py --weights yolov8s.pt                 # PyTorch
                               yolov8s_paddle_model       # PaddlePaddle
 ```
 
-
+> Use IDE Pycharm
+> ![](./img/pycharm_run_val.png)
 
 
 
