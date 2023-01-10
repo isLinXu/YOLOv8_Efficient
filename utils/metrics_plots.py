@@ -1,29 +1,6 @@
 import matplotlib.pyplot as plt
 import math
 
-
-def plot_one_metrics():
-    # 准备绘制数据
-    x = ["Mon", "Tues", "Wed", "Thur", "Fri", "Sat", "Sun"]
-    y = [20, 40, 35, 55, 42, 80, 50]
-    # "g" 表示红色，marksize用来设置'D'菱形的大小
-    plt.plot(x, y, "g", marker='D', markersize=5, label="周活")
-    # 绘制坐标轴标签
-    plt.xlabel("登录时间")
-    plt.ylabel("用户活跃度")
-    plt.title("C语言中文网活跃度")
-    # 显示图例
-    plt.legend(loc="lower right")
-    # 调用 text()在图像上绘制注释文本
-    # x1、y1表示文本所处坐标位置，ha参数控制水平对齐方式, va控制垂直对齐方式，str(y1)表示要绘制的文本
-    for x1, y1 in zip(x, y):
-        plt.text(x1, y1, str(y1), ha='center', va='bottom', fontsize=10)
-    # 保存图片
-    plt.savefig("1.jpg")
-    plt.show()
-
-
-
 def fps_to_ms(fps: int) -> int:
     '''
     Convert FPS to a millisecond interval.
@@ -96,23 +73,23 @@ def plot_mult_metrics():
     plt.ylabel('COCO Mask AP val')  # y轴标题
 
     for fps, map, label in zip(x1_1, y1_1, l1_1):
-        plt.text(fps, map, label, ha='center', va='bottom', fontsize=5)
+        plt.text(fps, map, label, ha='center', va='bottom', fontsize=6)
     for fps, map, label in zip(x2_1, y2_1, l2_1):
-        plt.text(fps, map, label, ha='center', va='bottom', fontsize=5)
+        plt.text(fps, map, label, ha='center', va='bottom', fontsize=6)
     for fps, map, label in zip(x2_2, y2_2, l2_2):
-        plt.text(fps, map, label, ha='center', va='bottom', fontsize=5)
+        plt.text(fps, map, label, ha='center', va='bottom', fontsize=6)
     for fps, map, label in zip(x3, y3, l3):
-        plt.text(fps, map, label, ha='center', va='bottom', fontsize=5)
+        plt.text(fps, map, label, ha='center', va='bottom', fontsize=6)
     for fps, map, label in zip(x4_1, y4_1, l4_1):
-        plt.text(fps, map, label, ha='center', va='bottom', fontsize=5)
+        plt.text(fps, map, label, ha='center', va='bottom', fontsize=6)
     for fps, map, label in zip(x4_2, y4_2, l4_2):
-        plt.text(fps, map, label, ha='center', va='bottom', fontsize=5)
+        plt.text(fps, map, label, ha='center', va='bottom', fontsize=6)
 
     # legend
-    plt.legend(['YOLOv5', 'YOLOv5-seg', 'YOLOv6', 'YOLOv6-6', 'YOLOv7', 'YOLOv8', 'YOLOv8-seg'], loc='lower right')
+    plt.legend(['YOLOv5', 'YOLOv6', 'YOLOv6-6', 'YOLOv7', 'YOLOv8', 'YOLOv8-seg'], loc='lower right')
 
     # save
-    plt.savefig("plot_metrics.jpg")
+    plt.savefig("plot_metrics.jpg",dpi=640)
     # show
     plt.show()
 
