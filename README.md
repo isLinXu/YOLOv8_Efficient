@@ -23,11 +23,13 @@ If you have more questions and ideas, please feel free to discuss them together.
 
 ![](./img/demo.png)
 
-- wandb train log:  [log](https://wandb.ai/glenn-jocher/YOLOv8
-  https://wandb.ai/glenn-jocher/YOLOv8)
+- wandb train log:  [log](https://wandb.ai/glenn-jocher/YOLOv8)
+- Experiment log: [log](https://github.com/isLinXu/YOLOv8_Efficient/tree/main/log)
+
 
 ## New's
 - ... ...
+- 2023/01/10 - add yolov8 metrics and logs
 - 2023/01/09 - add val.py and fix some error
 - 2023/01/07 - fix some error and warning 
 - 2023/01/06 - add train.py, detect.py and README.md
@@ -76,18 +78,18 @@ If you're looking to modify YOLO for R&D or to build on top of it, refer to [Usi
 
 ### Pretrained Checkpoints
 
-|                            Model                             | size (pixels) | mAPval 50-95 | mAPval 50 | Speed CPU b1 (ms) | Speed V100 b1 (ms) | Speed V100 b32 (ms) | params (M) | FLOPs @640 (B) |
-| :----------------------------------------------------------: | :-----------: | :----------: | :-------: | :---------------: | :----------------: | :-----------------: | :--------: | :------------: |
-| [yolov8n](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n.pt) |      640      |      -       |     -     |         -         |         -          |          -          |     -      |       -        |
-| [yolov8n-seg](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n-seg.pt) |      640      |      -       |     -     |         -         |         -          |          -          |     -      |       -        |
-| [yolov8s](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8s.pt) |       -       |      -       |     -     |         -         |         -          |          -          |            |                |
-| [yolov8-seg](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8s-seg.pt) |       -       |      -       |     -     |         -         |         -          |          -          |     -      |       -        |
-| [yolov8m](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8m.pt) |       -       |      -       |     -     |         -         |         -          |          -          |     -      |       -        |
-| [yolov8m-seg](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8m-seg.pt) |       -       |      -       |     -     |         -         |         -          |          -          |     -      |       -        |
-| [yolov8l](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8l.pt) |       -       |      -       |     -     |         -         |         -          |          -          |     -      |       -        |
-| [yolov8l-seg](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8l-seg.pt) |       -       |      -       |     -     |         -         |         -          |          -          |     -      |       -        |
-| [yolov8x](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8x.pt) |       -       |      -       |     -     |         -         |         -          |          -          |     -      |       -        |
-| [yolov8x-seg](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8x-seg.pt) |       -       |      -       |     -     |         -         |         -          |          -          |     -      |       -        |
+|                            Model                             | size (pixels) | mAPval 50-95 | mAPval 50 | Speed CPU b1 (ms) | Speed RTX 3080 (ms) | params (M) | FLOPs @640 (B) |
+| :----------------------------------------------------------: | :-----------: | :----------: | :-------: | :---------------: | :-----------------: | :--------: | :------------: |
+| [yolov8n](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n.pt) |      640      |     37.2     |   53.2    |         -         |         5.6         |     -      |       -        |
+| [yolov8n-seg](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n-seg.pt) |      640      |      -       |     -     |         -         |          -          |     -      |       -        |
+| [yolov8s](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8s.pt) |      640      |     44.7     |   62.2    |         -         |         5.7         |            |                |
+| [yolov8-seg](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8s-seg.pt) |      640      |      -       |     -     |         -         |          -          |     -      |       -        |
+| [yolov8m](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8m.pt) |      640      |     49.9     |   67.4    |         -         |         8.3         |     -      |       -        |
+| [yolov8m-seg](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8m-seg.pt) |      640      |      -       |     -     |         -         |          -          |     -      |       -        |
+| [yolov8l](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8l.pt) |      640      |     52.4     |   69.9    |         -         |        13.1         |     -      |       -        |
+| [yolov8l-seg](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8l-seg.pt) |      640      |      -       |     -     |         -         |          -          |     -      |       -        |
+| [yolov8x](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8x.pt) |      640      |     53.5     |   70.9    |         -         |        20.4         |     -      |       -        |
+| [yolov8x-seg](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8x-seg.pt) |      640      |      -       |     -     |         -         |          -          |     -      |       -        |
 
 - TODO：Model testing and validation in progress
 
@@ -134,7 +136,6 @@ python train.py --data coco128.yaml --weights '' --cfg yolov8ns.yaml --img 640  
 
 
   - Multi-GPU DDP training:
-    
 ```shell
     python -m torch.distributed.run --nproc_per_node 4 --master_port 1 train.py --data coco128.yaml --weights yolov8ns.pt --img 640 --device 0,1,2,3
 ```
