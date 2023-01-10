@@ -1,0 +1,143 @@
+/home/hxzh/anaconda3/envs/pytorch/bin/python3.7 /media/hxzh/MobilePan/Yolov8_Efficient/val.py
+val: data=data/coco.yaml, weights=weights/yolov8l-seg.pt, save_json=True, save_hybrid=False, conf=0.001, iou=0.6, max_det=300, half=False, dnn=False, plots=True, batch_size=32, imgsz=640, task=val, device=cpu, workers=8, single_cls=False, augment=False, verbose=False, save_txt=False, save_conf=False, project=runs/val, name=exp, exist_ok=False
+YOLOv8 🚀 512c93c Python-3.7.13 torch-1.11.0+cu102 CPU
+
+Ultralytics YOLO 🚀 0.0.59 Python-3.7.13 torch-1.11.0+cu102 CPU
+Fusing layers...
+YOLOv8l-seg summary: 295 layers, 45973568 parameters, 0 gradients, 220.5 GFLOPs
+Forcing --batch-size 1 square inference (1,3,640,640) for non-PyTorch models
+val: Scanning /media/hxzh/MobilePan/Yolov8_Efficient/datasets/coco/labels/val2017.cache... 4952 images, 48 backgrounds, 0 corrupt: 100%|██████████| 5000/5000 [00:00<?, ?it/s]
+val: Caching images (4.1GB disk): 100%|██████████| 5000/5000 [00:00<00:00, 40399.77it/s]
+                 Class     Images  Instances      Box(P          R      mAP50  mAP50-95)     Mask(P          R      mAP50  mAP50-95): 100%|██████████| 5000/5000 [42:38<00:00,  1.95it/s]
+                   all       5000      36335      0.737      0.626       0.69      0.519      0.731       0.61      0.663      0.432
+                person       5000      10777      0.835       0.75      0.843      0.632      0.838       0.74       0.83      0.516
+               bicycle       5000        314      0.812      0.565      0.682      0.425      0.751       0.51      0.577      0.249
+                   car       5000       1918       0.77      0.671      0.745       0.52      0.765      0.653      0.716      0.428
+            motorcycle       5000        367      0.799      0.703      0.794      0.556      0.793      0.689       0.75      0.433
+              airplane       5000        143      0.883      0.895      0.936      0.792      0.877      0.881      0.898      0.602
+                   bus       5000        283      0.855      0.806      0.886      0.773      0.852      0.792      0.862      0.689
+                 train       5000        190      0.903      0.885      0.945      0.771      0.884      0.858      0.911      0.714
+                 truck       5000        414      0.629      0.529      0.627      0.459      0.613        0.5      0.574      0.399
+                  boat       5000        424      0.751      0.519      0.624      0.373      0.755       0.51      0.627      0.305
+         traffic light       5000        634      0.728      0.485      0.578      0.313      0.714      0.465      0.556      0.271
+          fire hydrant       5000        101      0.955      0.841      0.919      0.757      0.944      0.828      0.898      0.686
+             stop sign       5000         75      0.752       0.72      0.789      0.705      0.766       0.72      0.783      0.662
+         parking meter       5000         60      0.795      0.633      0.694      0.543      0.759        0.6      0.662      0.504
+                 bench       5000        411      0.663      0.428      0.489      0.346       0.64      0.397       0.44      0.242
+                  bird       5000        427      0.731      0.516      0.607      0.419      0.741      0.506      0.579      0.342
+                   cat       5000        202      0.889      0.936      0.939      0.804      0.891      0.936      0.944      0.749
+                   dog       5000        218      0.799      0.839      0.845      0.735        0.8      0.835      0.835      0.656
+                 horse       5000        272      0.881      0.846      0.915      0.725      0.872      0.835      0.885      0.536
+                 sheep       5000        354      0.762      0.785      0.831      0.633      0.756      0.774      0.815      0.533
+                   cow       5000        372      0.824      0.782      0.857      0.681      0.811      0.759      0.827      0.546
+              elephant       5000        252      0.821      0.889      0.902      0.754      0.826      0.893      0.916      0.671
+                  bear       5000         71      0.914      0.895      0.935      0.798      0.913       0.89      0.935      0.776
+                 zebra       5000        266      0.859      0.893      0.934       0.76      0.863      0.891      0.925      0.655
+               giraffe       5000        232       0.94      0.918       0.95      0.791      0.932      0.909       0.94      0.643
+              backpack       5000        371      0.609      0.337      0.425      0.246      0.636       0.34      0.409      0.209
+              umbrella       5000        407      0.684      0.668      0.705      0.506      0.716       0.68      0.721      0.497
+               handbag       5000        540      0.599      0.337      0.409      0.254       0.64      0.346      0.416      0.204
+                   tie       5000        252      0.775       0.56      0.666      0.473        0.8      0.563       0.65       0.39
+              suitcase       5000        299      0.728      0.661      0.731      0.527      0.733      0.659      0.717      0.492
+               frisbee       5000        115      0.886      0.887      0.918      0.747      0.892      0.887       0.91      0.644
+                  skis       5000        241       0.77      0.498        0.6      0.364      0.628      0.402      0.421      0.116
+             snowboard       5000         69      0.818      0.565      0.646      0.469      0.779      0.536      0.615      0.313
+           sports ball       5000        260        0.8      0.627      0.697      0.494      0.776        0.6      0.656      0.396
+                  kite       5000        327      0.737      0.617      0.696      0.503      0.715      0.584      0.649      0.336
+          baseball bat       5000        145      0.731      0.641      0.711      0.475      0.763      0.648       0.68      0.335
+        baseball glove       5000        148      0.843      0.651      0.726      0.456      0.852      0.649       0.72      0.435
+            skateboard       5000        179       0.85      0.821      0.834      0.649      0.853      0.821      0.823      0.451
+             surfboard       5000        267      0.852      0.655      0.734      0.505      0.844      0.648      0.699      0.394
+         tennis racket       5000        225      0.893      0.853      0.893      0.661      0.891      0.849      0.894      0.605
+                bottle       5000       1013      0.701      0.554      0.644      0.461       0.69      0.535      0.615        0.4
+            wine glass       5000        341      0.765      0.572      0.667      0.456       0.76       0.56      0.636      0.364
+                   cup       5000        895      0.673      0.581      0.666      0.513      0.684      0.574      0.646      0.457
+                  fork       5000        215      0.714      0.614      0.698      0.523       0.68      0.567      0.614      0.302
+                 knife       5000        325      0.613        0.4      0.462       0.31      0.571      0.363      0.402       0.21
+                 spoon       5000        253       0.54      0.399      0.429      0.305      0.545      0.399      0.416       0.21
+                  bowl       5000        623      0.667      0.615      0.666      0.525      0.649      0.586      0.619      0.404
+                banana       5000        370      0.602      0.332      0.449      0.294      0.585      0.316      0.415      0.236
+                 apple       5000        236      0.546      0.318      0.336      0.242      0.539      0.297      0.325      0.214
+              sandwich       5000        177      0.691      0.581      0.641      0.495      0.635      0.521      0.569      0.434
+                orange       5000        285      0.561      0.355      0.442      0.343      0.574       0.35      0.429       0.31
+              broccoli       5000        312      0.623      0.355      0.454      0.277      0.645      0.356      0.461      0.249
+                carrot       5000        365      0.533      0.312      0.394      0.262      0.529      0.295      0.368      0.217
+               hot dog       5000        125      0.699      0.536      0.604      0.474      0.656      0.487      0.519      0.358
+                 pizza       5000        284      0.762      0.725      0.786      0.631      0.777      0.725       0.77       0.57
+                 donut       5000        328      0.746       0.57      0.716      0.571      0.759      0.555      0.711      0.533
+                  cake       5000        310      0.721      0.591      0.684      0.487      0.739      0.593      0.693      0.466
+                 chair       5000       1771      0.692      0.514      0.613      0.415      0.664      0.476      0.542      0.274
+                 couch       5000        261      0.662      0.655      0.708      0.553      0.656      0.632       0.65       0.44
+          potted plant       5000        342      0.601      0.547      0.578       0.38      0.594       0.52      0.535      0.269
+                   bed       5000        163      0.737      0.693      0.771      0.559      0.693      0.632      0.667      0.434
+          dining table       5000        695      0.606      0.468       0.52      0.355      0.532      0.399      0.376      0.171
+                toilet       5000        179      0.786      0.838      0.876      0.715      0.806      0.844      0.875      0.648
+                    tv       5000        288      0.813      0.767      0.845      0.669      0.824      0.764      0.847      0.627
+                laptop       5000        231      0.822       0.81      0.857      0.751      0.773      0.753      0.765      0.527
+                 mouse       5000        106      0.772      0.802       0.82      0.639      0.773      0.792      0.822      0.588
+                remote       5000        283       0.69      0.587      0.658      0.441      0.728      0.597      0.658      0.348
+              keyboard       5000        153      0.746       0.71      0.774      0.622      0.765      0.693      0.775      0.581
+            cell phone       5000        262       0.69       0.63      0.672      0.484      0.681      0.599      0.625      0.405
+             microwave       5000         55      0.771      0.818      0.839      0.682      0.759        0.8      0.819      0.647
+                  oven       5000        143      0.675      0.566      0.627      0.456      0.685      0.559      0.603      0.376
+               toaster       5000          9      0.532      0.556       0.56      0.418       0.54      0.556       0.56      0.412
+                  sink       5000        225      0.695      0.644      0.676      0.457      0.716      0.649      0.693      0.409
+          refrigerator       5000        126       0.78      0.762      0.832       0.72      0.786      0.758      0.833      0.684
+                  book       5000       1129      0.559      0.165      0.318      0.179      0.524      0.147      0.252       0.12
+                 clock       5000        267      0.806      0.715      0.769      0.561      0.827      0.723      0.782      0.526
+                  vase       5000        274      0.693      0.591       0.63      0.451      0.676      0.566      0.594      0.394
+              scissors       5000         36      0.889      0.444      0.509      0.419      0.837      0.417      0.486      0.277
+            teddy bear       5000        190      0.793      0.668      0.754      0.612      0.789      0.658      0.738      0.543
+            hair drier       5000         11      0.249     0.0909     0.0915     0.0731      0.263     0.0909     0.0932     0.0612
+            toothbrush       5000         57      0.648      0.526       0.51      0.362      0.665      0.509       0.55      0.242
+Speed: 0.9ms pre-process, 296.9ms inference, 0.0ms loss, 0.8ms post-process per image
+Saving runs/segment/val14/predictions.json...
+
+Evaluating pycocotools mAP using runs/segment/val14/predictions.json and /media/hxzh/MobilePan/Yolov8_Efficient/datasets/coco/annotations/instances_val2017.json...
+loading annotations into memory...
+Done (t=0.53s)
+creating index...
+index created!
+Loading and preparing results...
+DONE (t=2.06s)
+creating index...
+index created!
+Running per image evaluation...
+Evaluate annotation type *bbox*
+DONE (t=32.72s).
+Accumulating evaluation results...
+DONE (t=5.00s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.520
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.694
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.563
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.346
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.572
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.676
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.393
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.645
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.689
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.525
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.745
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.834
+Running per image evaluation...
+Evaluate annotation type *segm*
+DONE (t=35.88s).
+Accumulating evaluation results...
+DONE (t=5.01s).
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.425
+ Average Precision  (AP) @[ IoU=0.50      | area=   all | maxDets=100 ] = 0.661
+ Average Precision  (AP) @[ IoU=0.75      | area=   all | maxDets=100 ] = 0.452
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.238
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.476
+ Average Precision  (AP) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.594
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=  1 ] = 0.337
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets= 10 ] = 0.535
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=   all | maxDets=100 ] = 0.566
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= small | maxDets=100 ] = 0.366
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.630
+ Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.745
+data: {'path': PosixPath('/media/hxzh/MobilePan/Yolov8_Efficient/datasets/coco'), 'train': '/media/hxzh/MobilePan/Yolov8_Efficient/datasets/coco/train2017.txt', 'val': '/media/hxzh/MobilePan/Yolov8_Efficient/datasets/coco/val2017.txt', 'test': '/media/hxzh/MobilePan/Yolov8_Efficient/datasets/coco/test-dev2017.txt', 'names': {0: 'person', 1: 'bicycle', 2: 'car', 3: 'motorcycle', 4: 'airplane', 5: 'bus', 6: 'train', 7: 'truck', 8: 'boat', 9: 'traffic light', 10: 'fire hydrant', 11: 'stop sign', 12: 'parking meter', 13: 'bench', 14: 'bird', 15: 'cat', 16: 'dog', 17: 'horse', 18: 'sheep', 19: 'cow', 20: 'elephant', 21: 'bear', 22: 'zebra', 23: 'giraffe', 24: 'backpack', 25: 'umbrella', 26: 'handbag', 27: 'tie', 28: 'suitcase', 29: 'frisbee', 30: 'skis', 31: 'snowboard', 32: 'sports ball', 33: 'kite', 34: 'baseball bat', 35: 'baseball glove', 36: 'skateboard', 37: 'surfboard', 38: 'tennis racket', 39: 'bottle', 40: 'wine glass', 41: 'cup', 42: 'fork', 43: 'knife', 44: 'spoon', 45: 'bowl', 46: 'banana', 47: 'apple', 48: 'sandwich', 49: 'orange', 50: 'broccoli', 51: 'carrot', 52: 'hot dog', 53: 'pizza', 54: 'donut', 55: 'cake', 56: 'chair', 57: 'couch', 58: 'potted plant', 59: 'bed', 60: 'dining table', 61: 'toilet', 62: 'tv', 63: 'laptop', 64: 'mouse', 65: 'remote', 66: 'keyboard', 67: 'cell phone', 68: 'microwave', 69: 'oven', 70: 'toaster', 71: 'sink', 72: 'refrigerator', 73: 'book', 74: 'clock', 75: 'vase', 76: 'scissors', 77: 'teddy bear', 78: 'hair drier', 79: 'toothbrush'}, 'download': "from utils.general import download, Path\n# Download labels\nsegments = True  # segment or box labels\ndir = Path(yaml['path'])  # dataset root dir\nurl = 'https://github.com/ultralytics/yolov5/releases/download/v1.0/'\nurls = [url + ('coco2017labels-segments.zip' if segments else 'coco2017labels.zip')]  # labels\ndownload(urls, dir=dir.parent)\n# Download data\nurls = ['http://images.cocodataset.org/zips/train2017.zip',  # 19G, 118k images\n        'http://images.cocodataset.org/zips/val2017.zip',  # 1G, 5k images\n        'http://images.cocodataset.org/zips/test2017.zip']  # 7G, 41k images (optional)\ndownload(urls, dir=dir / 'images', threads=3)", 'nc': 80}
+nc: 80
+Results saved to runs/val/exp65
+
+Process finished with exit code 0
