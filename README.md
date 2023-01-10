@@ -16,7 +16,7 @@ Simple and efficient use for yolov8
 
 This is an unofficial repository maintained by independent developers for learning and communication based on the ultralytics v8 Weights and ultralytics Project.
 If you have more questions and ideas, please feel free to discuss them together. 
-In addition, ultralytics has released the latest [ultralytics](https://github.com/ultralytics/ultralytics) warehouse, and it is recommended to use the official one first.
+In addition, ultralytics has released the latest [ultralytics](https://github.com/ultralytics/ultralytics) repository, and it is recommended to use the official one first.
 
 ## 🥰Performance
 
