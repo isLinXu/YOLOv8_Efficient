@@ -10,7 +10,7 @@ Simple and efficient use for yolov8
 [![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Fatrox%2Fsync-dotenv%2Fbadge&style=flat)](https://github.com/isLinXu/Yolov8_Efficient)  ![img](https://badgen.net/badge/icon/learning?icon=deepscan&label)
 ![](https://badgen.net/github/stars/isLinXu/Yolov8_Efficient)![](https://badgen.net/github/forks/isLinXu/Yolov8_Efficient)![](https://badgen.net/github/prs/isLinXu/Yolov8_Efficient)![](https://badgen.net/github/releases/isLinXu/Yolov8_Efficient)![](https://badgen.net/github/license/isLinXu/Yolov8_Efficient)![img](https://hits.dwyl.com/isLinXu/Yolov8_Efficient.svg)
 
-## About
+## 😎 About
 
 This is an unofficial repository maintained by independent developers for learning and communication based on the ultralytics v8 Weights and ultralytics Project.
 If you have more questions and ideas, please feel free to discuss them together. In addition, if ultralytics releases the latest yolov8 warehouse, it is suggested to give priority to the official one.
@@ -19,7 +19,7 @@ If you have more questions and ideas, please feel free to discuss them together.
 
 
 
-## Performance
+## 🥰Performance
 
 ![](./img/demo.png)
 
@@ -28,7 +28,7 @@ If you have more questions and ideas, please feel free to discuss them together.
 
 
 
-## ![new](https://github.githubassets.com/images/icons/emoji/unicode/1f195.png) News!
+## 🆕News!
 
 ---
 
@@ -41,14 +41,14 @@ If you have more questions and ideas, please feel free to discuss them together.
 
 
 
-## TODO：
+## 🤔 TODO：
 
 - [ ] Model testing and validation in progress
 - [ ] 
 
 
 
-## ![person_with_probing_cane](https://github.githubassets.com/images/icons/emoji/unicode/1f9d1-1f9af.png) Quickstart
+## 🧙‍Quickstart
 
 - **Documentation**
 
@@ -89,15 +89,15 @@ If you're looking to modify YOLO for R&D or to build on top of it, refer to [Usi
 
 
 
-## ![mage_man](https://github.githubassets.com/images/icons/emoji/unicode/1f9d9-2642.png) Pretrained Checkpoints
+## 🧙‍Pretrained Checkpoints
 
 |                            Model                             | size (pixels) | mAPval 50-95 | mAPval 50 | Speed CPU b1 (ms) | Speed RTX 3080 b1(ms) | layers | params (M) | FLOPs @640 (B) |
 | :----------------------------------------------------------: | :-----------: | :----------: | :-------: | :---------------: | :-------------------: | :----: | :--------: | :------------: |
 | [yolov8n](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n.pt) |      640      |     37.2     |   53.2    |       47.2        |          5.6          |  168   |    3.15    |      8.7       |
-| [yolov8n-seg](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n-seg.pt) |      640      |     36.8     |   53.0    |         -         |         11.3          |  195   |    3.40    |      12.6      |
-| [yolov8s](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8s.pt) |      640      |     44.7     |   62.2    |         -         |          5.7          |  168   |   11.15    |      28.6      |
-| [yolov8s-seg](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8s-seg.pt) |      640      |     37.0     |   58.8    |         -         |         11.4          |  195   |   11.81    |      42.6      |
-| [yolov8m](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8m.pt) |      640      |     49.9     |   67.4    |         -         |          8.3          |  218   |   25.89    |      78.9      |
+| [yolov8n-seg](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n-seg.pt) |      640      |     30.7     |   50.0    |       59.3        |         11.3          |  195   |    3.40    |      12.6      |
+| [yolov8s](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8s.pt) |      640      |     44.7     |   62.2    |       87.9        |          5.7          |  168   |   11.15    |      28.6      |
+| [yolov8s-seg](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8s-seg.pt) |      640      |     37.0     |   58.8    |       107.6       |         11.4          |  195   |   11.81    |      42.6      |
+| [yolov8m](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8m.pt) |      640      |     49.9     |   67.4    |      185.6ms      |          8.3          |  218   |   25.89    |      78.9      |
 | [yolov8m-seg](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8m-seg.pt) |      640      |     40.6     |   63.5    |         -         |         15.3          |  245   |   27.27    |     110.2      |
 | [yolov8l](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8l.pt) |      640      |     52.4     |   69.9    |         -         |         13.1          |  268   |   43.67    |     165.2      |
 | [yolov8l-seg](https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8l-seg.pt) |      640      |     42.5     |   66.1    |         -         |         16.8          |  295   |   45.97    |     220.5      |
@@ -135,7 +135,7 @@ pip install -e .
 
 ![](./img/install_img.png)
 
-## Usage
+## 🔨Usage
 
 ### Train
 
@@ -222,7 +222,7 @@ python val.py --weights yolov8s.pt                 # PyTorch
 
 
 
-## Acknowledgements
+## 🌹Acknowledgements
 ### Expand
 - [https://github.com/ultralytics/yolov3](https://github.com/ultralytics/yolov3)
 - [https://github.com/ultralytics/yolov5](https://github.com/ultralytics/yolov5)
