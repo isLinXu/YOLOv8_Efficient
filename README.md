@@ -21,6 +21,16 @@ If you have more questions and ideas, please feel free to discuss them together.
 
 ## 🥰Performance
 
+### Metrics
+
+![](./img/plot_metrics.jpg)
+
+### structure 
+
+![](./img/v8_structure.jpg)
+
+> Thanks to [jizhishutong](https://github.com/jizhishutong) for providing model structure diagrams for this project.
+
 ![](./img/demo.png)
 
 - wandb train log:  [log](https://wandb.ai/glenn-jocher/YOLOv8)
