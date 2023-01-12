@@ -29,8 +29,6 @@ Currently doing the following work:
 - Combined with yolov5's usage habits and code structure, it is compatible and optimized
 
 > ![work](./img/work.png)
->
-> ![work](./img/work.png)
 
 
 - By verifying and calculating the weights of the index parameters on the coco dataset on their own machine, experimental records are stored:https://github.com/isLinXu/YOLOv8_Efficient/tree/main/log.
