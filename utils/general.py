@@ -1132,4 +1132,10 @@ def imshow(path, im):
 
 cv2.imread, cv2.imwrite, cv2.imshow = imread, imwrite, imshow  # redefine
 
+
+def scale_coords(coords, _image):
+    return tuple((v * _image.size[i % 2]
+                  for i, v in enumerate(coords)))
+
+
 # Variables ------------------------------------------------------------------------------------------------------------
