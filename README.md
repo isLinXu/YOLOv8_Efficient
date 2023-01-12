@@ -18,6 +18,38 @@ This is an unofficial repository maintained by independent developers for learni
 If you have more questions and ideas, please feel free to discuss them together. 
 In addition, ultralytics has released the latest [ultralytics](https://github.com/ultralytics/ultralytics) repository, and it is recommended to use the official one first.
 
+This project is based on ultralytics and yolov5 for comprehensive reference, and is committed to making the yolo series more efficient and easy to use.
+
+Currently doing the following work:
+
+- Referring to the Configuration parameters in https://docs.ultralytics.com/config/, the configuration alignment of corresponding parameters has been made for train.py, detect.py, val.py, etc.
+
+> ![config_1](./img/config_1.png)
+
+- Combined with yolov5's usage habits and code structure, it is compatible and optimized
+
+> ![work](./img/work.png)
+>
+> ![work](./img/work.png)
+
+
+- By verifying and calculating the weights of the index parameters on the coco dataset on their own machine, experimental records are stored:https://github.com/isLinXu/YOLOv8_Efficient/tree/main/log.
+
+  > ![log](./img/log.png)
+
+- Experimental data are recorded in:https://github.com/isLinXu/YOLOv8_Efficient/blob/main/log/yolo_model_data.csv
+  > ![model_metrics_data](./img/model_metrics_data.png)
+
+  
+
+- According to the calculated results, the corresponding index parameter comparison chart is drawn, this drawing program is also open source：https://github.com/isLinXu/model-metrics-plot。
+
+  > ![model_metrics_plot](./img/model_metrics_plot.png)
+
+- integration and configuration with other network model structures is in progress...
+
+
+
 ## 🥰Performance
 
 ### Metrics

@@ -16,6 +16,35 @@
 这是一个由独立开发人员维护的非官方存储库，用于基于 ultralytics v8 Weights 和 ultralytics Project 的学习和交流。如果大家有更多的问题和想法，欢迎大家一起讨论。
 另外，ultralytics已发布了最新的[ultralytics](https://github.com/ultralytics/ultralytics)仓库，建议优先使用官方的。
 
+本项目基于ultralytics及yolov5等进行综合参考，致力于让yolo系列的更加高效和易用。
+
+目前主要做了以下的工作：
+
+- 参考https://docs.ultralytics.com/config/中的Configuration参数，分别针对train.py、detect.py、val.py等做了相应参数的配置对齐。
+
+> ![config_1](../../Desktop/推文投稿-YOLOv8_Efficient/img/config_1.png)
+
+
+- 结合yolov5的使用习惯以及代码结构做了兼容和优化。
+
+  > ![work](../../Desktop/推文投稿-YOLOv8_Efficient/推文投稿-YOLOv8_Efficient/img/work.png)
+  >
+  > ![work](../../Desktop/推文投稿-YOLOv8_Efficient/img/work.png)
+
+- 通过在coco数据集上在自己的机器上进行验证和计算的权重的指标参数，实验记录存放在https://github.com/isLinXu/YOLOv8_Efficient/tree/main/log.实验数据记录在:
+
+  > ![log](../../Desktop/推文投稿-YOLOv8_Efficient/img/log.png)
+  >
+  > ![model_metrics_data](../../Desktop/推文投稿-YOLOv8_Efficient/img/model_metrics_data.png)
+
+  
+
+- 根据计算出来的结果绘制了相应的指标参数对比图，这个绘图程序也开源在https://github.com/isLinXu/model-metrics-plot中。
+
+  > ![model_metrics_plot](../../Desktop/推文投稿-YOLOv8_Efficient/img/model_metrics_plot.png)
+
+- 融合其他更多网络模型结构进行集成整合和配置，正在进行中...
+
 
 
 ## 🥰展示
