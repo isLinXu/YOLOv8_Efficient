@@ -28,7 +28,7 @@ def fps_to_ms(fps: int) -> int:
 def plot_metrics(df,fig_name):
     model_list = df['model'].unique()
     # print('model_list:',model_list)
-    font_size = 5
+    font_size = 10
 
     for i in range(0, len(model_list)):
         label_list = df[df['model'] == model_list[i]]['branch'].tolist()
