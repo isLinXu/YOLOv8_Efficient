@@ -91,7 +91,7 @@
 
 - **文档**
 
-  [**Ultralytics YOLO Docs**](https://v8docs.ultralytics.com/sdk/)
+  [**Ultralytics YOLO Docs**](https://docs.ultralytics.com/)
 
 - [ultralytics assets releases](https://github.com/ultralytics/assets/releases/)
 
@@ -124,7 +124,18 @@ results = model.predict(source="bus.jpg")
 success = model.export(format="onnx")
 ```
 
-如果您希望为研发修改 YOLO 或在其之上构建，请参阅我们文档中的[Using Trainer](https://docs.ultralytics.com/)指南。。
+如果您希望为研发修改 YOLO 或在其之上构建，请参阅文档https://docs.ultralytics.com/。
+
+
+
+### 3.训练自己的数据集
+
+这里以coco128为例。
+
+- 1.制作YOLO格式的数据集，可以通过项目目录中的`prepare_data.py`来进行数据集的划分与转换。
+- 2.修改`config`中相应模型权重的`.yaml`，配置其数据集路径，读入数据加载器。
+- 3.修改model中相应参数，主要是修改类别数量和网络结构参数，如果只是简单应用，那么不建议修改下面的网络结构参数，只修改其类别数量即可。
+- 4.运行train.py，这一步可以到`parse_opt`中对应的变量下进行修改，需要根据设备和训练的需要进行配置，主要包括`device`、`task`、`data`、`weights`、`epochs`、`batch_size`等，如果不配置则使用默认参数。
 
 
 

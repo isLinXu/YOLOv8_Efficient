@@ -91,7 +91,7 @@ Currently doing the following work:
 
 - **Documentation**
 
-  [**Ultralytics YOLO Docs**](https://v8docs.ultralytics.com/sdk/)
+  [**Ultralytics YOLO Docs**](https://docs.ultralytics.com/)
 
 - [ultralytics assets releases](https://github.com/ultralytics/assets/releases/)
 
@@ -124,7 +124,18 @@ results = model.predict(source="bus.jpg")
 success = model.export(format="onnx")
 ```
 
-If you're looking to modify YOLO for R&D or to build on top of it, refer to [Using Trainer](https://docs.ultralytics.com/) Guide on our docs.
+If you're looking to modify YOLO for R&D or to build on top of it, refer to https://docs.ultralytics.com/.
+
+
+
+### 3.训练自己的数据集
+
+Here take coco128 as an example：
+
+- 1.To make data sets in YOLO format, you can divide and transform data sets by `prepare_data.py` in the project directory.
+- 2.Modify the `.yaml` of the corresponding model weight in `config`, configure its data set path, and read the data loader.
+- 3.To modify the corresponding parameters in the model, it is mainly to modify the number of categories and network structure parameters. If it is only a simple application, it is not recommended to modify the following network structure parameters, but only the number of nc categories
+- 4.Run `train.py`, this step can be modified under the corresponding variable in `parse_opt`, which needs to be configured according to equipment and training needs, including `device`, `task`, `data`, `weights`,`epochs`, `batch_size`, etc. If this parameter is not specified, the default parameter is used.
 
 
 
