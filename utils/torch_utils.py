@@ -382,6 +382,12 @@ def smart_resume(ckpt, optimizer, ema=None, weights='yolov5s.pt', epochs=300, re
         epochs += ckpt['epoch']  # finetune additional epochs
     return best_fitness, start_epoch, epochs
 
+def time_synchronized():
+    # pytorch-accurate time
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+    return time.time()
+
 
 class EarlyStopping:
     # YOLOv5 simple early stopper
