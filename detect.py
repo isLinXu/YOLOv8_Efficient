@@ -104,22 +104,6 @@ def run(
                   line_thickness=line_thickness, hide_labels=hide_labels, hide_conf=hide_conf, half=half, dnn=dnn,
                   vid_stride=vid_stride, retina_masks=retina_masks)
 
-    # model.predict(source=source, view_img=True)  # Display preds. Accepts all yolo predict arguments
-    # pt = model
-
-    # Dataloader
-    # bs = 1  # batch_size
-    # if webcam:
-    #     view_img = check_imshow(warn=True)
-    #     dataset = LoadStreams(source, img_size=imgsz, auto=pt, vid_stride=vid_stride)
-    #     bs = len(dataset)
-    # elif screenshot:
-    #     dataset = LoadScreenshots(source, img_size=imgsz, auto=pt)
-    # else:
-    #     dataset = LoadImages(source, img_size=imgsz, auto=pt, vid_stride=vid_stride)
-    # vid_path, vid_writer = [None] * bs, [None] * bs
-
-
 def parse_opt():
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', nargs='+', type=str, default=ROOT / 'weights/yolov8n.pt',
@@ -151,9 +135,7 @@ def parse_opt():
     print_args(vars(opt))
     return opt
 
-
 def main(opt):
-    # check_requirements(exclude=('tensorboard', 'thop'))
     run(**vars(opt))
 
 
