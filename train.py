@@ -16,26 +16,23 @@ Tutorial:   https://github.com/ultralytics/yolov5/wiki/Train-Custom-Data
 """
 
 import argparse
-import math
+
 import os
 import random
 import sys
 import time
-from copy import deepcopy
-from datetime import datetime
+
 from pathlib import Path
 
 import numpy as np
 import torch
 import torch.distributed as dist
-import torch.nn as nn
+
 import yaml
 from torch.optim import lr_scheduler
-from tqdm import tqdm
+
 
 from ultralytics import YOLO
-
-# from ultralytics.yolo import Model
 
 
 FILE = Path(__file__).resolve()
@@ -44,25 +41,21 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative
 
-import val as validate  # for end-of-epoch mAP
-# from models.experimental import attempt_load
-# from models.yolo import Model
-from utils.autoanchor import check_anchors
+
+
 from utils.autobatch import check_train_batch_size
 from utils.callbacks import Callbacks
-from utils.dataloaders import create_dataloader
+
 from utils.downloads import attempt_download, is_url
-from utils.general import (LOGGER, TQDM_BAR_FORMAT, check_amp, check_dataset, check_file, check_git_info,
-                           check_git_status, check_img_size, check_requirements, check_suffix, check_yaml, colorstr,
-                           get_latest_run, increment_path, init_seeds, intersect_dicts, labels_to_class_weights,
-                           labels_to_image_weights, methods, one_cycle, print_args, print_mutation, strip_optimizer,
-                           yaml_save)
+from utils.general import (LOGGER, check_amp, check_dataset, check_file, check_git_info,
+                           check_img_size, check_requirements, check_suffix, check_yaml, colorstr,
+                           get_latest_run, increment_path, init_seeds,methods, one_cycle, print_args, print_mutation,yaml_save)
 from utils.loggers import Loggers
 from utils.loggers.comet.comet_utils import check_comet_resume
-from utils.loss import ComputeLoss
+
 from utils.metrics import fitness
 from utils.plots import plot_evolve
-from utils.torch_utils import (EarlyStopping, ModelEMA, de_parallel, select_device, smart_DDP, smart_optimizer,
+from utils.torch_utils import (ModelEMA, smart_DDP, smart_optimizer,
                                smart_resume, torch_distributed_zero_first, run_start_log)
 
 LOCAL_RANK = int(os.getenv('LOCAL_RANK', -1))  # https://pytorch.org/docs/stable/elastic/run.html
@@ -139,8 +132,8 @@ def train(hyp, opt, callbacks):  # hyp is path/to/hyp.yaml or hyp dictionary
     if pretrained:
         with torch_distributed_zero_first(LOCAL_RANK):
             weights = attempt_download(weights)  # download if not found locally
-        ckpt = torch.load(weights, map_location='cpu')  # load checkpoint to CPU to avoid CUDA memory leak
-
+        # ckpt = torch.load(weights, map_location='cpu')  # load checkpoint to CPU to avoid CUDA memory leak
+        #
         # load model
         model = YOLO(weights)
 
@@ -149,8 +142,8 @@ def train(hyp, opt, callbacks):  # hyp is path/to/hyp.yaml or hyp dictionary
                     box=box, cls=cls, device=device)  # DDP mode
 
         exclude = ['anchor'] if (cfg or hyp.get('anchors')) and not resume else []  # exclude keys
-        csd = ckpt['model'].float().state_dict()  # checkpoint state_dict as FP32
-        LOGGER.info(f'Transferred {len(csd)}/{len(model.state_dict())} items from {weights}')  # report
+        # csd = ckpt['model'].float().state_dict()  # checkpoint state_dict as FP32
+        # LOGGER.info(f'Transferred {len(csd)}/{len(model.state_dict())} items from {weights}')  # report
     else:
         # DDP mode
         model = YOLO(weights)
@@ -158,57 +151,62 @@ def train(hyp, opt, callbacks):  # hyp is path/to/hyp.yaml or hyp dictionary
                    weight_decay=weight_decay,
                    warmup_epochs=warmup_epochs, warmup_momentum=warmup_momentum, warmup_bias_lr=warmup_bias_lr,
                    box=box, cls=cls, device=device)  # DDP mode
-    amp = check_amp(model)  # check AMP
-
-    # Freeze
-    freeze = [f'model.{x}.' for x in (freeze if len(freeze) > 1 else range(freeze[0]))]  # layers to freeze
-    for k, v in model.named_parameters():
-        v.requires_grad = True  # train all layers
-        # v.register_hook(lambda x: torch.nan_to_num(x))  # NaN to 0 (commented for erratic training results)
-        if any(x in k for x in freeze):
-            LOGGER.info(f'freezing {k}')
-            v.requires_grad = False
-
-    # Image size
-    gs = max(int(model.stride.max()), 32)  # grid size (max stride)
-    imgsz = check_img_size(opt.imgsz, gs, floor=gs * 2)  # verify imgsz is gs-multiple
-
-    # Batch size
-    if RANK == -1 and batch_size == -1:  # single-GPU only, estimate best batch size
-        batch_size = check_train_batch_size(model, imgsz, amp)
-        loggers.on_params_update({"batch_size": batch_size})
-
-    # Optimizer
-    # nbs = 64  # nominal batch size
-    accumulate = max(round(nbs / batch_size), 1)  # accumulate loss before optimizing
-    hyp['weight_decay'] *= batch_size * accumulate / nbs  # scale weight_decay
-    optimizer = smart_optimizer(model, opt.optimizer, hyp['lr0'], hyp['momentum'], hyp['weight_decay'])
-
-    # Scheduler
-    if opt.cos_lr:
-        lf = one_cycle(1, hyp['lrf'], epochs)  # cosine 1->hyp['lrf']
-    else:
-        lf = lambda x: (1 - x / epochs) * (1.0 - hyp['lrf']) + hyp['lrf']  # linear
-    scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lf)  # plot_lr_scheduler(optimizer, scheduler, epochs)
-
-    # EMA
-    ema = ModelEMA(model) if RANK in {-1, 0} else None
-
-    # Resume
-    best_fitness, start_epoch = 0.0, 0
-    if pretrained:
-        if resume:
-            model = YOLO()
-            # model.resume()
-            best_fitness, start_epoch, epochs = smart_resume(ckpt, optimizer, ema, weights, epochs, resume)
-        del ckpt, csd
+    # amp = check_amp(model)  # check AMP
+    #
+    # # Freeze
+    # freeze = [f'model.{x}.' for x in (freeze if len(freeze) > 1 else range(freeze[0]))]  # layers to freeze
+    # for k, v in model.named_parameters():
+    #     v.requires_grad = True  # train all layers
+    #     # v.register_hook(lambda x: torch.nan_to_num(x))  # NaN to 0 (commented for erratic training results)
+    #     if any(x in k for x in freeze):
+    #         LOGGER.info(f'freezing {k}')
+    #         v.requires_grad = False
+    #
+    # # Image size
+    # gs = max(int(model.stride.max()), 32)  # grid size (max stride)
+    # imgsz = check_img_size(opt.imgsz, gs, floor=gs * 2)  # verify imgsz is gs-multiple
+    #
+    # # Batch size
+    # if RANK == -1 and batch_size == -1:  # single-GPU only, estimate best batch size
+    #     batch_size = check_train_batch_size(model, imgsz, amp)
+    #     loggers.on_params_update({"batch_size": batch_size})
+    #
+    # # Optimizer
+    # # nbs = 64  # nominal batch size
+    # accumulate = max(round(nbs / batch_size), 1)  # accumulate loss before optimizing
+    # hyp['weight_decay'] *= batch_size * accumulate / nbs  # scale weight_decay
+    # optimizer = smart_optimizer(model, opt.optimizer, hyp['lr0'], hyp['momentum'], hyp['weight_decay'])
+    #
+    # # Scheduler
+    # if opt.cos_lr:
+    #     lf = one_cycle(1, hyp['lrf'], epochs)  # cosine 1->hyp['lrf']
+    # else:
+    #     lf = lambda x: (1 - x / epochs) * (1.0 - hyp['lrf']) + hyp['lrf']  # linear
+    # scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lf)  # plot_lr_scheduler(optimizer, scheduler, epochs)
+    #
+    # # EMA
+    # ema = ModelEMA(model) if RANK in {-1, 0} else None
+    #
+    # # Resume
+    # best_fitness, start_epoch = 0.0, 0
+    # if pretrained:
+    #     if resume:
+    #         model = YOLO()
+    #         # model.resume()
+    #         best_fitness, start_epoch, epochs = smart_resume(ckpt, optimizer, ema, weights, epochs, resume)
+    #     del ckpt, csd
 
 
 
 def parse_opt(known=False):
     parser = argparse.ArgumentParser()
+
     parser.add_argument('--task', default='detect', help='select train task, i.e.  detect or classify, seg')
     parser.add_argument('--device', default='0', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
+    parser.add_argument('--weights', type=str, default=ROOT / 'weights/yolov5n.pt', help='initial weights path')
+    parser.add_argument('--cfg', type=str, default=ROOT / 'models/yolov5n.yaml', help='model.yaml path')
+    parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='dataset.yaml path')
+    parser.add_argument('--hyp', type=str, default=ROOT / 'data/hyps/hyp.scratch-low.yaml', help='hyperparameters path')
     parser.add_argument('--epochs', type=int, default=100, help='total training epochs')
     parser.add_argument('--batch-size','--batch',  type=int, default=4,
                         help='total batch size for all GPUs, -1 for autobatch')
@@ -242,11 +240,6 @@ def parse_opt(known=False):
     parser.add_argument('--mask_ratio', type=float, default=4.0, help='Segmentation: Set mask downsampling.')
     parser.add_argument('--dropout', default=False, action='store_true',
                         help='Classification: Use dropout while training')
-
-    parser.add_argument('--weights', type=str, default=ROOT / 'weights/yolov8n.pt', help='initial weights path')
-    parser.add_argument('--cfg', type=str, default='', help='model.yaml path')
-    parser.add_argument('--data', type=str, default=ROOT / 'data/coco128.yaml', help='dataset.yaml path')
-    parser.add_argument('--hyp', type=str, default=ROOT / 'data/hyps/hyp.scratch-low.yaml', help='hyperparameters path')
 
     parser.add_argument('--resume', nargs='?', const=True, default=False, help='resume most recent training')
     parser.add_argument('--nosave', action='store_true', help='only save final checkpoint')
@@ -423,8 +416,8 @@ def main(opt, callbacks=Callbacks()):
                     f'Usage example: $ python train.py --hyp {evolve_yaml}')
 
 
+
 def run(**kwargs):
-    # Usage: import train; train.run(data='coco128.yaml', imgsz=320, weights='yolov5m.pt')
     opt = parse_opt(True)
     for k, v in kwargs.items():
         setattr(opt, k, v)
