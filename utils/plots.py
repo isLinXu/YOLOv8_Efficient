@@ -557,3 +557,46 @@ def save_one_box(xyxy, im, file=Path('im.jpg'), gain=1.02, pad=10, square=False,
         # cv2.imwrite(f, crop)  # save BGR, https://github.com/ultralytics/yolov5/issues/7007 chroma subsampling issue
         Image.fromarray(crop[..., ::-1]).save(f, quality=95, subsampling=0)  # save RGB
     return crop
+
+
+def plot_one_box(x, im, color=(128, 128, 128), label=None, line_thickness=3):
+    # Plots one bounding box on image 'im' using OpenCV
+    assert im.data.contiguous, 'Image not contiguous. Apply np.ascontiguousarray(im) to plot_on_box() input image.'
+    tl = line_thickness or round(0.002 * (im.shape[0] + im.shape[1]) / 2) + 1  # line/font thickness
+    c1, c2 = (int(x[0]), int(x[1])), (int(x[2]), int(x[3]))
+    cv2.rectangle(im, c1, c2, color, thickness=tl, lineType=cv2.LINE_AA)
+    if label:
+        tf = max(tl - 1, 1)  # font thickness
+        t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]
+        c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
+        cv2.rectangle(im, c1, c2, color, -1, cv2.LINE_AA)  # filled
+        cv2.putText(im, label, (c1[0], c1[1] - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
+
+
+def plot_one_box_PIL(box, im, color=(128, 128, 128), label=None, line_thickness=None):
+    # Plots one bounding box on image 'im' using PIL
+    im = Image.fromarray(im)
+    draw = ImageDraw.Draw(im)
+    line_thickness = line_thickness or max(int(min(im.size) / 200), 2)
+    draw.rectangle(box, width=line_thickness, outline=color)  # plot
+    if label:
+        font = ImageFont.truetype("Arial.ttf", size=max(round(max(im.size) / 40), 12))
+        txt_width, txt_height = font.getsize(label)
+        draw.rectangle([box[0], box[1] - txt_height + 4, box[0] + txt_width, box[1]], fill=color)
+        draw.text((box[0], box[1] - txt_height + 1), label, fill=(255, 255, 255), font=font)
+    return np.asarray(im)
+
+
+
+import colorsys
+def color_list(category_quantity):
+    hsv_list = []
+    for i in range(category_quantity):
+        hue = i / category_quantity
+        saturation = 1
+        value = 1
+        hsv = (hue, saturation, value)
+        hsv_list.append(hsv)
+    colorFloat_list = [colorsys.hsv_to_rgb(*k) for k in hsv_list]
+    color_list = [tuple([int(x * 255) for x in k]) for k in colorFloat_list]
+    return color_list
