@@ -1,3 +1,5 @@
+# Ultralytics YOLO 🚀, GPL-3.0 license
+
 import json
 from collections import defaultdict
 from pathlib import Path
@@ -8,7 +10,7 @@ from tqdm import tqdm
 
 from ultralytics.nn.autobackend import AutoBackend
 from ultralytics.yolo.data.utils import check_dataset, check_dataset_yaml
-from ultralytics.yolo.utils import DEFAULT_CONFIG, LOGGER, RANK, TQDM_BAR_FORMAT, callbacks
+from ultralytics.yolo.utils import DEFAULT_CONFIG, LOGGER, RANK, SETTINGS, TQDM_BAR_FORMAT, callbacks
 from ultralytics.yolo.utils.checks import check_imgsz
 from ultralytics.yolo.utils.files import increment_path
 from ultralytics.yolo.utils.ops import Profile
@@ -59,11 +61,14 @@ class BaseValidator:
         self.speed = None
         self.jdict = None
 
-        project = self.args.project or f"runs/{self.args.task}"
+        project = self.args.project or Path(SETTINGS['runs_dir']) / self.args.task
         name = self.args.name or f"{self.args.mode}"
         self.save_dir = save_dir or increment_path(Path(project) / name,
                                                    exist_ok=self.args.exist_ok if RANK in {-1, 0} else True)
         (self.save_dir / 'labels' if self.args.save_txt else self.save_dir).mkdir(parents=True, exist_ok=True)
+
+        if self.args.conf is None:
+            self.args.conf = 0.001  # default conf=0.001
 
         self.callbacks = defaultdict(list, {k: [v] for k, v in callbacks.default_callbacks.items()})  # add callbacks
 
@@ -78,11 +83,12 @@ class BaseValidator:
             self.device = trainer.device
             self.data = trainer.data
             model = trainer.ema.ema or trainer.model
-            self.args.half &= self.device.type != 'cpu'
+            self.args.half = self.device.type != 'cpu'  # force FP16 val during training
             model = model.half() if self.args.half else model.float()
             self.model = model
             self.loss = torch.zeros_like(trainer.loss_items, device=trainer.device)
             self.args.plots = trainer.epoch == trainer.epochs - 1  # always plot final epoch
+            model.eval()
         else:
             callbacks.add_integration_callbacks(self)
             self.run_callbacks('on_val_start')
@@ -103,17 +109,17 @@ class BaseValidator:
                         f'Forcing --batch-size 1 square inference (1,3,{imgsz},{imgsz}) for non-PyTorch models')
 
             if isinstance(self.args.data, str) and self.args.data.endswith(".yaml"):
-                data = check_dataset_yaml(self.args.data)
+                self.data = check_dataset_yaml(self.args.data)
             else:
-                data = check_dataset(self.args.data)
+                self.data = check_dataset(self.args.data)
 
             if self.device.type == 'cpu':
                 self.args.workers = 0  # faster CPU val as time dominated by inference, not dataloading
             self.dataloader = self.dataloader or \
-                              self.get_dataloader(data.get("val") or data.set("test"), self.args.batch)
-            self.data = data
+                              self.get_dataloader(self.data.get("val") or self.data.set("test"), self.args.batch)
 
-        model.eval()
+            model.eval()
+            model.warmup(imgsz=(1 if pt else self.args.batch, 3, imgsz, imgsz))  # warmup
 
         dt = Profile(), Profile(), Profile(), Profile()
         n_batches = len(self.dataloader)
@@ -157,7 +163,8 @@ class BaseValidator:
         self.run_callbacks('on_val_end')
         if self.training:
             model.float()
-            return {**stats, **trainer.label_loss_items(self.loss.cpu() / len(self.dataloader), prefix="val")}
+            results = {**stats, **trainer.label_loss_items(self.loss.cpu() / len(self.dataloader), prefix="val")}
+            return {k: round(float(v), 5) for k, v in results.items()}  # return results as 5 decimal place floats
         else:
             self.logger.info('Speed: %.1fms pre-process, %.1fms inference, %.1fms loss, %.1fms post-process per image' %
                              self.speed)

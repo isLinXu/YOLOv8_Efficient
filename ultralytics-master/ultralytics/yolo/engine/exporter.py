@@ -1,6 +1,6 @@
-# YOLOv5 🚀 by Ultralytics, GPL-3.0 license
+# Ultralytics YOLO 🚀, GPL-3.0 license
 """
-Export a YOLOv5 PyTorch model to other formats. TensorFlow exports authored by https://github.com/zldrobit
+Export a YOLOv8 PyTorch model to other formats. TensorFlow exports authored by https://github.com/zldrobit
 
 Format                  | `format=argument`         | Model
 ---                     | ---                       | ---
@@ -67,13 +67,13 @@ import torch
 
 import ultralytics
 from ultralytics.nn.modules import Detect, Segment
-from ultralytics.nn.tasks import ClassificationModel, DetectionModel, SegmentationModel, attempt_load_weights
+from ultralytics.nn.tasks import ClassificationModel, DetectionModel, SegmentationModel
 from ultralytics.yolo.configs import get_config
 from ultralytics.yolo.data.dataloaders.stream_loaders import LoadImages
 from ultralytics.yolo.data.utils import check_dataset
 from ultralytics.yolo.utils import DEFAULT_CONFIG, LOGGER, callbacks, colorstr, get_default_args, yaml_save
 from ultralytics.yolo.utils.checks import check_imgsz, check_requirements, check_version, check_yaml
-from ultralytics.yolo.utils.files import file_size, increment_path
+from ultralytics.yolo.utils.files import file_size
 from ultralytics.yolo.utils.ops import Profile
 from ultralytics.yolo.utils.torch_utils import guess_task_from_head, select_device, smart_inference_mode
 
@@ -81,7 +81,7 @@ MACOS = platform.system() == 'Darwin'  # macOS environment
 
 
 def export_formats():
-    # YOLOv5 export formats
+    # YOLOv8 export formats
     x = [
         ['PyTorch', '-', '.pt', True, True],
         ['TorchScript', 'torchscript', '.torchscript', True, True],
@@ -99,7 +99,7 @@ def export_formats():
 
 
 def try_export(inner_func):
-    # YOLOv5 export decorator, i..e @try_export
+    # YOLOv8 export decorator, i..e @try_export
     inner_args = get_default_args(inner_func)
 
     def outer_func(*args, **kwargs):
@@ -138,10 +138,6 @@ class Exporter:
         if overrides is None:
             overrides = {}
         self.args = get_config(config, overrides)
-        project = self.args.project or f"runs/{self.args.task}"
-        name = self.args.name or "exp"  # hardcode mode as export doesn't require it
-        self.save_dir = increment_path(Path(project) / name, exist_ok=self.args.exist_ok)
-        self.save_dir.mkdir(parents=True, exist_ok=True)
         self.callbacks = defaultdict(list, {k: [v] for k, v in callbacks.default_callbacks.items()})  # add callbacks
         callbacks.add_integration_callbacks(self)
 
@@ -156,9 +152,9 @@ class Exporter:
         jit, onnx, xml, engine, coreml, saved_model, pb, tflite, edgetpu, tfjs, paddle = flags  # export booleans
 
         # Load PyTorch model
-        self.device = select_device(self.args.device or 'cpu')
+        self.device = select_device('cpu' if self.args.device is None else self.args.device)
         if self.args.half:
-            if self.device.type == 'cpu' or not coreml:
+            if self.device.type == 'cpu' and not coreml:
                 LOGGER.info('half=True only compatible with GPU or CoreML export, i.e. use device=0 or format=coreml')
                 self.args.half = False
             assert not self.args.dynamic, '--half not compatible with --dynamic, i.e. use either --half or --dynamic'
@@ -172,15 +168,16 @@ class Exporter:
 
         # Input
         im = torch.zeros(self.args.batch, 3, *self.imgsz).to(self.device)
-        file = Path(getattr(model, 'pt_path', None) or model.yaml['yaml_file'])
+        file = Path(getattr(model, 'pt_path', None) or getattr(model, 'yaml_file', None) or model.yaml['yaml_file'])
         if file.suffix == '.yaml':
             file = Path(file.name)
 
         # Update model
-        model = deepcopy(model)
+        model = deepcopy(model).to(self.device)
         for p in model.parameters():
             p.requires_grad = False
         model.eval()
+        model.float()
         model = model.fuse()
         for k, m in model.named_modules():
             if isinstance(m, (Detect, Segment)):
@@ -222,6 +219,8 @@ class Exporter:
         if coreml:  # CoreML
             f[4], _ = self._export_coreml()
         if any((saved_model, pb, tflite, edgetpu, tfjs)):  # TensorFlow formats
+            raise NotImplementedError('YOLOv8 TensorFlow export support is still under development. '
+                                      'Please consider contributing to the effort if you have TF expertise. Thank you!')
             assert not isinstance(model, ClassificationModel), 'ClassificationModel TF exports not yet supported.'
             nms = False
             f[5], s_model = self._export_saved_model(nms=nms or self.args.agnostic_nms or tfjs,
@@ -258,7 +257,7 @@ class Exporter:
 
     @try_export
     def _export_torchscript(self, prefix=colorstr('TorchScript:')):
-        # YOLOv5 TorchScript model export
+        # YOLOv8 TorchScript model export
         LOGGER.info(f'\n{prefix} starting export with torch {torch.__version__}...')
         f = self.file.with_suffix('.torchscript')
 
@@ -275,7 +274,7 @@ class Exporter:
 
     @try_export
     def _export_onnx(self, prefix=colorstr('ONNX:')):
-        # YOLOv5 ONNX export
+        # YOLOv8 ONNX export
         check_requirements('onnx>=1.12.0')
         import onnx  # noqa
 
@@ -317,21 +316,18 @@ class Exporter:
         # Simplify
         if self.args.simplify:
             try:
-                cuda = torch.cuda.is_available()
-                check_requirements(('onnxruntime-gpu' if cuda else 'onnxruntime', 'onnx-simplifier>=0.4.1'))
-                import onnxsim  # noqa
+                check_requirements('onnxsim')
+                import onnxsim
 
                 LOGGER.info(f'{prefix} simplifying with onnx-simplifier {onnxsim.__version__}...')
-                model_onnx, check = onnxsim.simplify(model_onnx)
-                assert check, 'assert check failed'
-                onnx.save(model_onnx, f)
+                subprocess.run(f'onnxsim {f} {f}', shell=True)
             except Exception as e:
                 LOGGER.info(f'{prefix} simplifier failure: {e}')
         return f, model_onnx
 
     @try_export
     def _export_openvino(self, prefix=colorstr('OpenVINO:')):
-        # YOLOv5 OpenVINO export
+        # YOLOv8 OpenVINO export
         check_requirements('openvino-dev')  # requires openvino-dev: https://pypi.org/project/openvino-dev/
         import openvino.inference_engine as ie  # noqa
 
@@ -346,7 +342,7 @@ class Exporter:
 
     @try_export
     def _export_paddle(self, prefix=colorstr('PaddlePaddle:')):
-        # YOLOv5 Paddle export
+        # YOLOv8 Paddle export
         check_requirements(('paddlepaddle', 'x2paddle'))
         import x2paddle  # noqa
         from x2paddle.convert import pytorch2paddle  # noqa
@@ -360,7 +356,7 @@ class Exporter:
 
     @try_export
     def _export_coreml(self, prefix=colorstr('CoreML:')):
-        # YOLOv5 CoreML export
+        # YOLOv8 CoreML export
         check_requirements('coremltools>=6.0')
         import coremltools as ct  # noqa
 
@@ -383,7 +379,7 @@ class Exporter:
         LOGGER.info(f'\n{prefix} starting export with coremltools {ct.__version__}...')
         f = self.file.with_suffix('.mlmodel')
 
-        model = iOSModel(self.model, self.im) if self.args.nms else self.model
+        model = iOSModel(self.model, self.im).eval() if self.args.nms else self.model
         ts = torch.jit.trace(model, self.im, strict=False)  # TorchScript model
         ct_model = ct.convert(ts, inputs=[ct.ImageType('image', shape=self.im.shape, scale=1 / 255, bias=[0, 0, 0])])
         bits, mode = (8, 'kmeans_lut') if self.args.int8 else (16, 'linear') if self.args.half else (32, None)
@@ -400,7 +396,7 @@ class Exporter:
 
     @try_export
     def _export_engine(self, workspace=4, verbose=False, prefix=colorstr('TensorRT:')):
-        # YOLOv5 TensorRT export https://developer.nvidia.com/tensorrt
+        # YOLOv8 TensorRT export https://developer.nvidia.com/tensorrt
         assert self.im.device.type != 'cpu', 'export running on CPU but must be on GPU, i.e. `device==0`'
         try:
             import tensorrt as trt  # noqa
@@ -464,7 +460,41 @@ class Exporter:
                             iou_thres=0.45,
                             conf_thres=0.25,
                             prefix=colorstr('TensorFlow SavedModel:')):
-        # YOLOv5 TensorFlow SavedModel export
+
+        # YOLOv8 TensorFlow SavedModel export
+        try:
+            import tensorflow as tf  # noqa
+        except ImportError:
+            check_requirements(f"tensorflow{'' if torch.cuda.is_available() else '-macos' if MACOS else '-cpu'}")
+            import tensorflow as tf  # noqa
+        check_requirements(("onnx", "onnx2tf", "sng4onnx", "onnxsim", "onnx_graphsurgeon"),
+                           cmds="--extra-index-url https://pypi.ngc.nvidia.com ")
+
+        LOGGER.info(f'\n{prefix} starting export with tensorflow {tf.__version__}...')
+        f = str(self.file).replace(self.file.suffix, '_saved_model')
+
+        # Export to ONNX
+        self._export_onnx()
+        onnx = self.file.with_suffix('.onnx')
+
+        # Export to TF SavedModel
+        subprocess.run(f'onnx2tf -i {onnx} --output_signaturedefs -o {f}', shell=True)
+
+        # Load saved_model
+        keras_model = tf.saved_model.load(f, tags=None, options=None)
+
+        return f, keras_model
+
+    @try_export
+    def _export_saved_model_OLD(self,
+                                nms=False,
+                                agnostic_nms=False,
+                                topk_per_class=100,
+                                topk_all=100,
+                                iou_thres=0.45,
+                                conf_thres=0.25,
+                                prefix=colorstr('TensorFlow SavedModel:')):
+        # YOLOv8 TensorFlow SavedModel export
         try:
             import tensorflow as tf  # noqa
         except ImportError:
@@ -504,7 +534,7 @@ class Exporter:
 
     @try_export
     def _export_pb(self, keras_model, file, prefix=colorstr('TensorFlow GraphDef:')):
-        # YOLOv5 TensorFlow GraphDef *.pb export https://github.com/leimao/Frozen_Graph_TensorFlow
+        # YOLOv8 TensorFlow GraphDef *.pb export https://github.com/leimao/Frozen_Graph_TensorFlow
         import tensorflow as tf  # noqa
         from tensorflow.python.framework.convert_to_constants import convert_variables_to_constants_v2  # noqa
 
@@ -520,7 +550,7 @@ class Exporter:
 
     @try_export
     def _export_tflite(self, keras_model, int8, data, nms, agnostic_nms, prefix=colorstr('TensorFlow Lite:')):
-        # YOLOv5 TensorFlow Lite export
+        # YOLOv8 TensorFlow Lite export
         import tensorflow as tf  # noqa
 
         LOGGER.info(f'\n{prefix} starting export with tensorflow {tf.__version__}...')
@@ -560,7 +590,7 @@ class Exporter:
 
     @try_export
     def _export_edgetpu(self, prefix=colorstr('Edge TPU:')):
-        # YOLOv5 Edge TPU export https://coral.ai/docs/edgetpu/models-intro/
+        # YOLOv8 Edge TPU export https://coral.ai/docs/edgetpu/models-intro/
         cmd = 'edgetpu_compiler --version'
         help_url = 'https://coral.ai/docs/edgetpu/compiler/'
         assert platform.system() == 'Linux', f'export only supported on Linux. See {help_url}'
@@ -586,7 +616,7 @@ class Exporter:
 
     @try_export
     def _export_tfjs(self, prefix=colorstr('TensorFlow.js:')):
-        # YOLOv5 TensorFlow.js export
+        # YOLOv8 TensorFlow.js export
         check_requirements('tensorflowjs')
         import tensorflowjs as tfjs  # noqa
 
@@ -644,7 +674,7 @@ class Exporter:
             tmp_file.unlink()
 
     def _pipeline_coreml(self, model, prefix=colorstr('CoreML Pipeline:')):
-        # YOLOv5 CoreML pipeline
+        # YOLOv8 CoreML pipeline
         import coremltools as ct  # noqa
 
         LOGGER.info(f'{prefix} starting pipeline with coremltools {ct.__version__}...')
@@ -773,17 +803,22 @@ class Exporter:
 def export(cfg):
     cfg.model = cfg.model or "yolov8n.yaml"
     cfg.format = cfg.format or "torchscript"
-    exporter = Exporter(cfg)
 
-    model = None
-    if isinstance(cfg.model, (str, Path)):
-        if Path(cfg.model).suffix == '.yaml':
-            model = DetectionModel(cfg.model)
-        elif Path(cfg.model).suffix == '.pt':
-            model = attempt_load_weights(cfg.model, fuse=True)
-        else:
-            TypeError(f'Unsupported model type {cfg.model}')
-    exporter(model=model)
+    # exporter = Exporter(cfg)
+    #
+    # model = None
+    # if isinstance(cfg.model, (str, Path)):
+    #     if Path(cfg.model).suffix == '.yaml':
+    #         model = DetectionModel(cfg.model)
+    #     elif Path(cfg.model).suffix == '.pt':
+    #         model = attempt_load_weights(cfg.model, fuse=True)
+    #     else:
+    #         TypeError(f'Unsupported model type {cfg.model}')
+    # exporter(model=model)
+
+    from ultralytics import YOLO
+    model = YOLO(cfg.model)
+    model.export(**cfg)
 
 
 if __name__ == "__main__":

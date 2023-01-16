@@ -1,4 +1,4 @@
-# YOLOv5 🚀 by Ultralytics, GPL-3.0 license
+# Ultralytics YOLO 🚀, GPL-3.0 license
 """
 Model validation metrics
 """
@@ -252,7 +252,7 @@ class ConfusionMatrix:
                        vmin=0.0,
                        xticklabels=ticklabels,
                        yticklabels=ticklabels).set_facecolor((1, 1, 1))
-        ax.set_ylabel('True')
+        ax.set_xlabel('True')
         ax.set_ylabel('Predicted')
         ax.set_title('Confusion Matrix')
         fig.savefig(Path(save_dir) / 'confusion_matrix.png', dpi=250)
@@ -469,7 +469,7 @@ class Metric:
 
     def mean_results(self):
         """Mean of results, return mp, mr, map50, map"""
-        return self.mp, self.mr, self.map50, self.map
+        return [self.mp, self.mr, self.map50, self.map]
 
     def class_result(self, i):
         """class-aware result, return p[i], r[i], ap50[i], ap[i]"""
@@ -520,12 +520,17 @@ class DetMetrics:
     def get_maps(self, nc):
         return self.metric.get_maps(nc)
 
+    @property
     def fitness(self):
         return self.metric.fitness()
 
     @property
     def ap_class_index(self):
         return self.metric.ap_class_index
+
+    @property
+    def results_dict(self):
+        return dict(zip(self.keys + ["fitness"], self.mean_results() + [self.fitness]))
 
 
 class SegmentMetrics:
@@ -560,14 +565,8 @@ class SegmentMetrics:
     @property
     def keys(self):
         return [
-            "metrics/precision(B)",
-            "metrics/recall(B)",
-            "metrics/mAP50(B)",
-            "metrics/mAP50-95(B)",  # metrics
-            "metrics/precision(M)",
-            "metrics/recall(M)",
-            "metrics/mAP50(M)",
-            "metrics/mAP50-95(M)"]
+            "metrics/precision(B)", "metrics/recall(B)", "metrics/mAP50(B)", "metrics/mAP50-95(B)",
+            "metrics/precision(M)", "metrics/recall(M)", "metrics/mAP50(M)", "metrics/mAP50-95(M)"]
 
     def mean_results(self):
         return self.metric_box.mean_results() + self.metric_mask.mean_results()
@@ -578,6 +577,7 @@ class SegmentMetrics:
     def get_maps(self, nc):
         return self.metric_box.get_maps(nc) + self.metric_mask.get_maps(nc)
 
+    @property
     def fitness(self):
         return self.metric_mask.fitness() + self.metric_box.fitness()
 
@@ -585,3 +585,33 @@ class SegmentMetrics:
     def ap_class_index(self):
         # boxes and masks have the same ap_class_index
         return self.metric_box.ap_class_index
+
+    @property
+    def results_dict(self):
+        return dict(zip(self.keys + ["fitness"], self.mean_results() + [self.fitness]))
+
+
+class ClassifyMetrics:
+
+    def __init__(self) -> None:
+        self.top1 = 0
+        self.top5 = 0
+
+    def process(self, targets, pred):
+        # target classes and predicted classes
+        pred, targets = torch.cat(pred), torch.cat(targets)
+        correct = (targets[:, None] == pred).float()
+        acc = torch.stack((correct[:, 0], correct.max(1).values), dim=1)  # (top1, top5) accuracy
+        self.top1, self.top5 = acc.mean(0).tolist()
+
+    @property
+    def fitness(self):
+        return self.top5
+
+    @property
+    def results_dict(self):
+        return dict(zip(self.keys + ["fitness"], [self.top1, self.top5, self.fitness]))
+
+    @property
+    def keys(self):
+        return ["metrics/accuracy_top1", "metrics/accuracy_top5"]

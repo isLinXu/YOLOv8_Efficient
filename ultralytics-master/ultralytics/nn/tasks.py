@@ -1,11 +1,11 @@
+# Ultralytics YOLO 🚀, GPL-3.0 license
+
 import contextlib
 from copy import deepcopy
-from pathlib import Path
 
 import thop
 import torch
 import torch.nn as nn
-import torchvision
 
 from ultralytics.nn.modules import (C1, C2, C3, C3TR, SPP, SPPF, Bottleneck, BottleneckCSP, C2f, C3Ghost, C3x, Classify,
                                     Concat, Conv, ConvTranspose, Detect, DWConv, DWConvTranspose2d, Ensemble, Focus,
@@ -17,35 +17,36 @@ from ultralytics.yolo.utils.torch_utils import (fuse_conv_and_bn, initialize_wei
 
 
 class BaseModel(nn.Module):
-    '''
-     The BaseModel class is a base class for all the models in the Ultralytics YOLO family.
-    '''
+    """
+    The BaseModel class serves as a base class for all the models in the Ultralytics YOLO family.
+    """
 
     def forward(self, x, profile=False, visualize=False):
         """
-        > `forward` is a wrapper for `_forward_once` that runs the model on a single scale
+        Forward pass of the model on a single scale.
+        Wrapper for `_forward_once` method.
 
         Args:
-          x: the input image
-          profile: whether to profile the model. Defaults to False
-          visualize: if True, will return the intermediate feature maps. Defaults to False
+            x (torch.tensor): The input image tensor
+            profile (bool): Whether to profile the model, defaults to False
+            visualize (bool): Whether to return the intermediate feature maps, defaults to False
 
         Returns:
-          The output of the network.
+            (torch.tensor): The output of the network.
         """
         return self._forward_once(x, profile, visualize)
 
     def _forward_once(self, x, profile=False, visualize=False):
         """
-        > Forward pass of the network
+        Perform a forward pass through the network.
 
         Args:
-          x: input to the model
-          profile: if True, the time taken for each layer will be printed. Defaults to False
-          visualize: If True, it will save the feature maps of the model. Defaults to False
+            x (torch.tensor): The input tensor to the model
+            profile (bool):  Print the computation time of each layer if True, defaults to False.
+            visualize (bool): Save the feature maps of the model if True, defaults to False
 
         Returns:
-          The last layer of the model.
+            (torch.tensor): The last output of the model.
         """
         y, dt = [], []  # outputs
         for m in self.model:
@@ -56,19 +57,21 @@ class BaseModel(nn.Module):
             x = m(x)  # run
             y.append(x if m.i in self.save else None)  # save output
             if visualize:
-                pass
+                LOGGER.info('visualize feature not yet supported')
                 # TODO: feature_visualization(x, m.type, m.i, save_dir=visualize)
         return x
 
     def _profile_one_layer(self, m, x, dt):
         """
-        It takes a model, an input, and a list of times, and it profiles the model on the input, appending
-        the time to the list
+        Profile the computation time and FLOPs of a single layer of the model on a given input. Appends the results to the provided list.
 
         Args:
-          m: the model
-          x: the input image
-          dt: list of time taken for each layer
+            m (nn.Module): The layer to be profiled.
+            x (torch.Tensor): The input data to the layer.
+            dt (list): A list to store the computation time of the layer.
+
+        Returns:
+            None
         """
         c = m == self.model[-1]  # is final layer, copy input as inplace fix
         o = thop.profile(m, inputs=(x.copy() if c else x,), verbose=False)[0] / 1E9 * 2 if thop else 0  # FLOPs
@@ -84,10 +87,10 @@ class BaseModel(nn.Module):
 
     def fuse(self):
         """
-        > It takes a model and fuses the Conv2d() and BatchNorm2d() layers into a single layer
+        Fuse the `Conv2d()` and `BatchNorm2d()` layers of the model into a single layer, in order to improve the computation efficiency.
 
         Returns:
-          The model is being returned.
+            (nn.Module): The fused model is returned.
         """
         LOGGER.info('Fusing layers... ')
         for m in self.model.modules():
@@ -103,8 +106,8 @@ class BaseModel(nn.Module):
         Prints model information
 
         Args:
-          verbose: if True, prints out the model information. Defaults to False
-          imgsz: the size of the image that the model will be trained on. Defaults to 640
+            verbose (bool): if True, prints out the model information. Defaults to False
+            imgsz (int): the size of the image that the model will be trained on. Defaults to 640
         """
         model_info(self, verbose, imgsz)
 
@@ -114,10 +117,10 @@ class BaseModel(nn.Module):
         parameters or registered buffers
 
         Args:
-          fn: the function to apply to the model
+            fn: the function to apply to the model
 
         Returns:
-          A model that is a Detect() object.
+            A model that is a Detect() object.
         """
         self = super()._apply(fn)
         m = self.model[-1]  # Detect()
@@ -129,20 +132,20 @@ class BaseModel(nn.Module):
 
     def load(self, weights):
         """
-        > This function loads the weights of the model from a file
+        This function loads the weights of the model from a file
 
         Args:
-          weights: The weights to load into the model.
+            weights (str): The weights to load into the model.
         """
         # Force all tasks to implement this function
         raise NotImplementedError("This function needs to be implemented by derived classes!")
 
 
 class DetectionModel(BaseModel):
-    # YOLOv5 detection model
+    # YOLOv8 detection model
     def __init__(self, cfg='yolov8n.yaml', ch=3, nc=None, verbose=True):  # model, input channels, number of classes
         super().__init__()
-        self.yaml = cfg if isinstance(cfg, dict) else yaml_load(check_yaml(cfg))  # cfg dict
+        self.yaml = cfg if isinstance(cfg, dict) else yaml_load(check_yaml(cfg), append_filename=True)  # cfg dict
 
         # Define model
         ch = self.yaml['ch'] = self.yaml.get('ch', ch)  # input channels
@@ -219,16 +222,22 @@ class DetectionModel(BaseModel):
 
 
 class SegmentationModel(DetectionModel):
-    # YOLOv5 segmentation model
+    # YOLOv8 segmentation model
     def __init__(self, cfg='yolov8n-seg.yaml', ch=3, nc=None, verbose=True):
         super().__init__(cfg, ch, nc, verbose)
 
 
 class ClassificationModel(BaseModel):
-    # YOLOv5 classification model
-    def __init__(self, cfg=None, model=None, nc=1000, cutoff=10):  # yaml, model, number of classes, cutoff index
+    # YOLOv8 classification model
+    def __init__(self,
+                 cfg=None,
+                 model=None,
+                 ch=3,
+                 nc=1000,
+                 cutoff=10,
+                 verbose=True):  # yaml, model, number of classes, cutoff index
         super().__init__()
-        self._from_detection_model(model, nc, cutoff) if model is not None else self._from_yaml(cfg)
+        self._from_detection_model(model, nc, cutoff) if model is not None else self._from_yaml(cfg, ch, nc, verbose)
 
     def _from_detection_model(self, model, nc=1000, cutoff=10):
         # Create a YOLOv5 classification model from a YOLOv5 detection model
@@ -246,9 +255,16 @@ class ClassificationModel(BaseModel):
         self.save = []
         self.nc = nc
 
-    def _from_yaml(self, cfg):
-        # TODO: Create a YOLOv5 classification model from a *.yaml file
-        self.model = None
+    def _from_yaml(self, cfg, ch, nc, verbose):
+        self.yaml = cfg if isinstance(cfg, dict) else yaml_load(check_yaml(cfg), append_filename=True)  # cfg dict
+        # Define model
+        ch = self.yaml['ch'] = self.yaml.get('ch', ch)  # input channels
+        if nc and nc != self.yaml['nc']:
+            LOGGER.info(f"Overriding model.yaml nc={self.yaml['nc']} with nc={nc}")
+            self.yaml['nc'] = nc  # override yaml value
+        self.model, self.save = parse_model(deepcopy(self.yaml), ch=[ch], verbose=verbose)  # model, savelist
+        self.names = {i: f'{i}' for i in range(self.yaml['nc'])}  # default names dict
+        self.info()
 
     def load(self, weights):
         model = weights["model"] if isinstance(weights, dict) else weights  # torchvision models are not dicts
@@ -321,8 +337,36 @@ def attempt_load_weights(weights, device=None, inplace=True, fuse=False):
     return model
 
 
+def attempt_load_one_weight(weight, device=None, inplace=True, fuse=False):
+    # Loads a single model weights
+    from ultralytics.yolo.utils.downloads import attempt_download
+
+    ckpt = torch.load(attempt_download(weight), map_location='cpu')  # load
+    args = {**DEFAULT_CONFIG_DICT, **ckpt['train_args']}  # combine model and default args, preferring model args
+    model = (ckpt.get('ema') or ckpt['model']).to(device).float()  # FP32 model
+
+    # Model compatibility updates
+    model.args = {k: v for k, v in args.items() if k in DEFAULT_CONFIG_KEYS}  # attach args to model
+    model.pt_path = weight  # attach *.pt file path to model
+    if not hasattr(model, 'stride'):
+        model.stride = torch.tensor([32.])
+
+    model = model.fuse().eval() if fuse and hasattr(model, 'fuse') else model.eval()  # model in eval mode
+
+    # Module compatibility updates
+    for m in model.modules():
+        t = type(m)
+        if t in (nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU, Detect, Segment):
+            m.inplace = inplace  # torch 1.7.0 compatibility
+        elif t is nn.Upsample and not hasattr(m, 'recompute_scale_factor'):
+            m.recompute_scale_factor = None  # torch 1.11.0 compatibility
+
+    # Return model and ckpt
+    return model, ckpt
+
+
 def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
-    # Parse a YOLOv5 model.yaml dictionary
+    # Parse a YOLO model.yaml dictionary
     if verbose:
         LOGGER.info(f"\n{'':>3}{'from':>20}{'n':>3}{'params':>10}  {'module':<45}{'arguments':<30}")
     nc, gd, gw, act = d['nc'], d['depth_multiple'], d['width_multiple'], d.get('activation')
@@ -330,7 +374,6 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
         Conv.default_act = eval(act)  # redefine default activation, i.e. Conv.default_act = nn.SiLU()
         if verbose:
             LOGGER.info(f"{colorstr('activation:')} {act}")  # print
-    no = nc + 4  # number of outputs = classes + box
 
     layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
     for i, (f, n, m, args) in enumerate(d['backbone'] + d['head']):  # from, number, module, args
@@ -341,10 +384,10 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
 
         n = n_ = max(round(n * gd), 1) if n > 1 else n  # depth gain
         if m in {
-                Conv, ConvTranspose, GhostConv, Bottleneck, GhostBottleneck, SPP, SPPF, DWConv, Focus, BottleneckCSP,
-                C1, C2, C2f, C3, C3TR, C3Ghost, nn.ConvTranspose2d, DWConvTranspose2d, C3x}:
+                Classify, Conv, ConvTranspose, GhostConv, Bottleneck, GhostBottleneck, SPP, SPPF, DWConv, Focus,
+                BottleneckCSP, C1, C2, C2f, C3, C3TR, C3Ghost, nn.ConvTranspose2d, DWConvTranspose2d, C3x}:
             c1, c2 = ch[f], args[0]
-            if c2 != no:  # if not output
+            if c2 != nc:  # if c2 not equal to number of classes (i.e. for Classify() output)
                 c2 = make_divisible(c2 * gw, 8)
 
             args = [c1, c2, *args[1:]]
@@ -355,7 +398,6 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             args = [ch[f]]
         elif m is Concat:
             c2 = sum(ch[x] for x in f)
-        # TODO: channel, gw, gd
         elif m in {Detect, Segment}:
             args.append([ch[x] for x in f])
             if m is Segment:
@@ -375,16 +417,3 @@ def parse_model(d, ch, verbose=True):  # model_dict, input_channels(3)
             ch = []
         ch.append(c2)
     return nn.Sequential(*layers), sorted(save)
-
-
-def get_model(model='s.pt', pretrained=True):
-    # Load a YOLO model locally, from torchvision, or from Ultralytics assets
-    if model.endswith(".pt"):
-        model = model.split(".")[0]
-
-    if Path(f"{model}.pt").is_file():  # local file
-        return attempt_load_weights(f"{model}.pt", device='cpu')
-    elif model in torchvision.models.__dict__:  # TorchVision models i.e. resnet50, efficientnet_b0
-        return torchvision.models.__dict__[model](weights='IMAGENET1K_V1' if pretrained else None)
-    else:  # Ultralytics assets
-        return attempt_load_weights(f"{model}.pt", device='cpu')

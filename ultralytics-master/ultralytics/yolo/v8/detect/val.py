@@ -1,3 +1,5 @@
+# Ultralytics YOLO 🚀, GPL-3.0 license
+
 import os
 from pathlib import Path
 
@@ -19,35 +21,35 @@ class DetectionValidator(BaseValidator):
 
     def __init__(self, dataloader=None, save_dir=None, pbar=None, logger=None, args=None):
         super().__init__(dataloader, save_dir, pbar, logger, args)
-        self.data_dict = yaml_load(check_file(self.args.data)) if self.args.data else None
+        self.data_dict = yaml_load(check_file(self.args.data), append_filename=True) if self.args.data else None
         self.is_coco = False
         self.class_map = None
-        self.targets = None
-        self.metrics = DetMetrics(save_dir=self.save_dir, plot=self.args.plots)
+        self.metrics = DetMetrics(save_dir=self.save_dir)
         self.iouv = torch.linspace(0.5, 0.95, 10)  # iou vector for mAP@0.5:0.95
         self.niou = self.iouv.numel()
 
     def preprocess(self, batch):
         batch["img"] = batch["img"].to(self.device, non_blocking=True)
         batch["img"] = (batch["img"].half() if self.args.half else batch["img"].float()) / 255
-        self.nb, _, self.height, self.width = batch["img"].shape  # batch size, channels, height, width
-        self.targets = torch.cat((batch["batch_idx"].view(-1, 1), batch["cls"].view(-1, 1), batch["bboxes"]), 1)
-        self.targets = self.targets.to(self.device)
-        height, width = batch["img"].shape[2:]
-        self.targets[:, 2:] *= torch.tensor((width, height, width, height), device=self.device)  # to pixels
-        self.lb = [self.targets[self.targets[:, 0] == i, 1:]
-                   for i in range(self.nb)] if self.args.save_hybrid else []  # for autolabelling
+        for k in ["batch_idx", "cls", "bboxes"]:
+            batch[k] = batch[k].to(self.device)
+
+        nb = len(batch["img"])
+        self.lb = [torch.cat([batch["cls"], batch["bboxes"]], dim=-1)[batch["batch_idx"] == i]
+                   for i in range(nb)] if self.args.save_hybrid else []  # for autolabelling
 
         return batch
 
     def init_metrics(self, model):
         head = model.model[-1] if self.training else model.model.model[-1]
-        self.is_coco = self.data.get('val', '').endswith(f'coco{os.sep}val2017.txt')  # is COCO dataset
+        val = self.data.get('val', '')  # validation path
+        self.is_coco = isinstance(val, str) and val.endswith(f'coco{os.sep}val2017.txt')  # is COCO dataset
         self.class_map = ops.coco80_to_coco91_class() if self.is_coco else list(range(1000))
         self.args.save_json |= self.is_coco and not self.training  # run on final val if training COCO
         self.nc = head.nc
         self.names = model.names
         self.metrics.names = self.names
+        self.metrics.plot = self.args.plots
         self.confusion_matrix = ConfusionMatrix(nc=self.nc)
         self.seen = 0
         self.jdict = []
@@ -69,36 +71,41 @@ class DetectionValidator(BaseValidator):
     def update_metrics(self, preds, batch):
         # Metrics
         for si, pred in enumerate(preds):
-            labels = self.targets[self.targets[:, 0] == si, 1:]
-            nl, npr = labels.shape[0], pred.shape[0]  # number of labels, predictions
+            idx = batch["batch_idx"] == si
+            cls = batch["cls"][idx]
+            bbox = batch["bboxes"][idx]
+            nl, npr = cls.shape[0], pred.shape[0]  # number of labels, predictions
             shape = batch["ori_shape"][si]
-            # path = batch["shape"][si][0]
             correct_bboxes = torch.zeros(npr, self.niou, dtype=torch.bool, device=self.device)  # init
             self.seen += 1
 
             if npr == 0:
                 if nl:
-                    self.stats.append((correct_bboxes, *torch.zeros((2, 0), device=self.device), labels[:, 0]))
+                    self.stats.append((correct_bboxes, *torch.zeros((2, 0), device=self.device), cls.squeeze(-1)))
                     if self.args.plots:
-                        self.confusion_matrix.process_batch(detections=None, labels=labels[:, 0])
+                        self.confusion_matrix.process_batch(detections=None, labels=cls.squeeze(-1))
                 continue
 
             # Predictions
             if self.args.single_cls:
                 pred[:, 5] = 0
             predn = pred.clone()
-            ops.scale_boxes(batch["img"][si].shape[1:], predn[:, :4], shape)  # native-space pred
+            ops.scale_boxes(batch["img"][si].shape[1:], predn[:, :4], shape,
+                            ratio_pad=batch["ratio_pad"][si])  # native-space pred
 
             # Evaluate
             if nl:
-                tbox = ops.xywh2xyxy(labels[:, 1:5])  # target boxes
-                ops.scale_boxes(batch["img"][si].shape[1:], tbox, shape)  # native-space labels
-                labelsn = torch.cat((labels[:, 0:1], tbox), 1)  # native-space labels
+                height, width = batch["img"].shape[2:]
+                tbox = ops.xywh2xyxy(bbox) * torch.tensor(
+                    (width, height, width, height), device=self.device)  # target boxes
+                ops.scale_boxes(batch["img"][si].shape[1:], tbox, shape,
+                                ratio_pad=batch["ratio_pad"][si])  # native-space labels
+                labelsn = torch.cat((cls, tbox), 1)  # native-space labels
                 correct_bboxes = self._process_batch(predn, labelsn)
                 # TODO: maybe remove these `self.` arguments as they already are member variable
                 if self.args.plots:
                     self.confusion_matrix.process_batch(predn, labelsn)
-            self.stats.append((correct_bboxes, pred[:, 4], pred[:, 5], labels[:, 0]))  # (conf, pcls, tcls)
+            self.stats.append((correct_bboxes, pred[:, 4], pred[:, 5], cls.squeeze(-1)))  # (conf, pcls, tcls)
 
             # Save
             if self.args.save_json:
@@ -111,12 +118,10 @@ class DetectionValidator(BaseValidator):
         if len(stats) and stats[0].any():
             self.metrics.process(*stats)
         self.nt_per_class = np.bincount(stats[-1].astype(int), minlength=self.nc)  # number of targets per class
-        fitness = {"fitness": self.metrics.fitness()}
-        metrics = dict(zip(self.metric_keys, self.metrics.mean_results()))
-        return {**metrics, **fitness}
+        return self.metrics.results_dict
 
     def print_results(self):
-        pf = '%22s' + '%11i' * 2 + '%11.3g' * len(self.metric_keys)  # print format
+        pf = '%22s' + '%11i' * 2 + '%11.3g' * len(self.metrics.keys)  # print format
         self.logger.info(pf % ("all", self.seen, self.nt_per_class.sum(), *self.metrics.mean_results()))
         if self.nt_per_class.sum() == 0:
             self.logger.warning(
@@ -166,17 +171,12 @@ class DetectionValidator(BaseValidator):
                                  hyp=dict(self.args),
                                  cache=False,
                                  pad=0.5,
-                                 rect=self.args.rect,
+                                 rect=True,
                                  workers=self.args.workers,
                                  prefix=colorstr(f'{self.args.mode}: '),
                                  shuffle=False,
                                  seed=self.args.seed)[0] if self.args.v5loader else \
             build_dataloader(self.args, batch_size, img_path=dataset_path, stride=gs, mode="val")[0]
-
-    # TODO: align with train loss metrics
-    @property
-    def metric_keys(self):
-        return ["metrics/precision(B)", "metrics/recall(B)", "metrics/mAP50(B)", "metrics/mAP50-95(B)"]
 
     def plot_val_samples(self, batch, ni):
         plot_images(batch["img"],
@@ -226,7 +226,7 @@ class DetectionValidator(BaseValidator):
                 eval.evaluate()
                 eval.accumulate()
                 eval.summarize()
-                stats[self.metric_keys[-1]], stats[self.metric_keys[-2]] = eval.stats[:2]  # update mAP50-95 and mAP50
+                stats[self.metrics.keys[-1]], stats[self.metrics.keys[-2]] = eval.stats[:2]  # update mAP50-95 and mAP50
             except Exception as e:
                 self.logger.warning(f'pycocotools unable to run: {e}')
         return stats
@@ -234,6 +234,7 @@ class DetectionValidator(BaseValidator):
 
 @hydra.main(version_base=None, config_path=str(DEFAULT_CONFIG.parent), config_name=DEFAULT_CONFIG.name)
 def val(cfg):
+    cfg.model = cfg.model or "yolov8n.pt"
     cfg.data = cfg.data or "coco128.yaml"
     validator = DetectionValidator(args=cfg)
     validator(model=cfg.model)

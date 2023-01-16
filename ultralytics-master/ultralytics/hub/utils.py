@@ -1,14 +1,17 @@
+# Ultralytics YOLO 🚀, GPL-3.0 license
+
+import os
 import shutil
 import threading
 import time
 
 import requests
 
-from ultralytics.hub.config import HUB_API_ROOT
-from ultralytics.yolo.utils import DEFAULT_CONFIG_DICT, LOGGER, RANK, SETTINGS, colorstr, emojis
+from ultralytics.yolo.utils import DEFAULT_CONFIG_DICT, LOGGER, RANK, SETTINGS, TryExcept, colorstr, emojis
 
 PREFIX = colorstr('Ultralytics: ')
 HELP_MSG = 'If this issue persists please visit https://github.com/ultralytics/hub/issues for assistance.'
+HUB_API_ROOT = os.environ.get("ULTRALYTICS_HUB_API", "https://api.ultralytics.com")
 
 
 def check_dataset_disk_space(url='https://github.com/ultralytics/yolov5/releases/download/v1.0/coco128.zip', sf=2.0):
@@ -72,7 +75,7 @@ def split_key(key=''):
     return api_key, model_id
 
 
-def smart_request(*args, retry=3, timeout=30, thread=True, code=-1, method="post", **kwargs):
+def smart_request(*args, retry=3, timeout=30, thread=True, code=-1, method="post", verbose=True, **kwargs):
     """
     Makes an HTTP request using the 'requests' library, with exponential backoff retries up to a specified timeout.
 
@@ -83,13 +86,13 @@ def smart_request(*args, retry=3, timeout=30, thread=True, code=-1, method="post
         thread (bool, optional): Whether to execute the request in a separate daemon thread. Default is True.
         code (int, optional): An identifier for the request, used for logging purposes. Default is -1.
         method (str, optional): The HTTP method to use for the request. Choices are 'post' and 'get'. Default is 'post'.
+        verbose (bool, optional): A flag to determine whether to print out to console or not. Default is True.
         **kwargs: Keyword arguments to be passed to the requests function specified in method.
 
     Returns:
         requests.Response: The HTTP response object. If the request is executed in a separate thread, returns None.
     """
     retry_codes = (408, 500)  # retry only these codes
-    methods = {'post': requests.post, 'get': requests.get}  # request methods
 
     def func(*func_args, **func_kwargs):
         r = None  # response
@@ -97,7 +100,10 @@ def smart_request(*args, retry=3, timeout=30, thread=True, code=-1, method="post
         for i in range(retry + 1):
             if (time.time() - t0) > timeout:
                 break
-            r = methods[method](*func_args, **func_kwargs)  # i.e. post(url, data, json, files)
+            if method == 'post':
+                r = requests.post(*func_args, **func_kwargs)  # i.e. post(url, data, json, files)
+            elif method == 'get':
+                r = requests.get(*func_args, **func_kwargs)  # i.e. get(url, data, json, files)
             if r.status_code == 200:
                 break
             try:
@@ -111,7 +117,8 @@ def smart_request(*args, retry=3, timeout=30, thread=True, code=-1, method="post
                     h = r.headers  # response headers
                     m = f"Rate limit reached ({h['X-RateLimit-Remaining']}/{h['X-RateLimit-Limit']}). " \
                         f"Please retry after {h['Retry-After']}s."
-                LOGGER.warning(f"{PREFIX}{m} {HELP_MSG} ({r.status_code} #{code})")
+                if verbose:
+                    LOGGER.warning(f"{PREFIX}{m} {HELP_MSG} ({r.status_code} #{code})")
                 if r.status_code not in retry_codes:
                     return r
             time.sleep(2 ** i)  # exponential standoff
@@ -123,6 +130,7 @@ def smart_request(*args, retry=3, timeout=30, thread=True, code=-1, method="post
         return func(*args, **kwargs)
 
 
+@TryExcept()
 def sync_analytics(cfg, all_keys=False, enabled=False):
     """
    Sync analytics data if enabled in the global settings
@@ -135,8 +143,8 @@ def sync_analytics(cfg, all_keys=False, enabled=False):
     if SETTINGS['sync'] and RANK in {-1, 0} and enabled:
         cfg = dict(cfg)  # convert type from DictConfig to dict
         if not all_keys:
-            cfg = {k: v for k, v in cfg.items() if v != DEFAULT_CONFIG_DICT[k]}  # retain only non-default values
+            cfg = {k: v for k, v in cfg.items() if v != DEFAULT_CONFIG_DICT.get(k, None)}  # retain non-default values
         cfg['uuid'] = SETTINGS['uuid']  # add the device UUID to the configuration data
 
-        # Send a request to the HUB API to sync the analytics data
-        smart_request(f'{HUB_API_ROOT}/v1/usage/anonymous', data=cfg, headers=None, code=3, retry=0)
+        # Send a request to the HUB API to sync analytics
+        smart_request(f'{HUB_API_ROOT}/v1/usage/anonymous', json=cfg, headers=None, code=3, retry=0, verbose=False)

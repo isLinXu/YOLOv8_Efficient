@@ -1,3 +1,5 @@
+# Ultralytics YOLO 🚀, GPL-3.0 license
+
 import glob
 import math
 import os
@@ -50,7 +52,7 @@ class BaseDataset(Dataset):
         if self.single_cls:
             self.update_labels(include_class=[])
 
-        self.ni = len(self.im_files)
+        self.ni = len(self.labels)
 
         # rect stuff
         self.rect = rect
@@ -108,7 +110,7 @@ class BaseDataset(Dataset):
                 if segments:
                     self.labels[i]["segments"] = segments[j]
             if self.single_cls:
-                self.labels[i]["cls"] = 0
+                self.labels[i]["cls"][:, 0] = 0
 
     def load_image(self, i):
         # Loads 1 image from dataset index 'i', returns (im, resized hw)
@@ -179,13 +181,17 @@ class BaseDataset(Dataset):
     def get_label_info(self, index):
         label = self.labels[index].copy()
         label["img"], label["ori_shape"], label["resized_shape"] = self.load_image(index)
+        label["ratio_pad"] = (
+            label["resized_shape"][0] / label["ori_shape"][0],
+            label["resized_shape"][1] / label["ori_shape"][1],
+        )  # for evaluation
         if self.rect:
             label["rect_shape"] = self.batch_shapes[self.batch[index]]
         label = self.update_labels_info(label)
         return label
 
     def __len__(self):
-        return len(self.im_files)
+        return len(self.labels)
 
     def update_labels_info(self, label):
         """custom your label format here"""

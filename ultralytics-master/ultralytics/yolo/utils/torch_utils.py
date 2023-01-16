@@ -1,3 +1,5 @@
+# Ultralytics YOLO 🚀, GPL-3.0 license
+
 import math
 import os
 import platform
@@ -59,7 +61,7 @@ def DDP_model(model):
 def select_device(device='', batch_size=0, newline=False):
     # device = None or 'cpu' or 0 or '0' or '0,1,2,3'
     ver = git_describe() or ultralytics.__version__  # git commit or pip package version
-    s = f'Ultralytics YOLO 🚀 {ver} Python-{platform.python_version()} torch-{torch.__version__} '
+    s = f'Ultralytics YOLOv{ver} 🚀 Python-{platform.python_version()} torch-{torch.__version__} '
     device = str(device).strip().lower().replace('cuda:', '').replace('none', '')  # to string, 'cuda:0' to '0'
     cpu = device == 'cpu'
     mps = device == 'mps'  # Apple Metal Performance Shaders (MPS)
@@ -68,7 +70,7 @@ def select_device(device='', batch_size=0, newline=False):
     elif device:  # non-cpu device requested
         os.environ['CUDA_VISIBLE_DEVICES'] = device  # set environment variable - must be before assert is_available()
         assert torch.cuda.is_available() and torch.cuda.device_count() >= len(device.replace(',', '')), \
-            f"Invalid CUDA '--device {device}' requested, use '--device cpu' or pass valid CUDA device(s)"
+            f"Invalid CUDA 'device={device}' requested, use 'device=cpu' or pass valid CUDA device(s)"
 
     if not cpu and not mps and torch.cuda.is_available():  # prefer GPU if available
         devices = device.split(',') if device else '0'  # range(torch.cuda.device_count())  # i.e. 0,1,6,7
@@ -268,8 +270,23 @@ class ModelEMA:
         copy_attr(self.ema, model, include, exclude)
 
 
-def strip_optimizer(f='best.pt', s=''):  # from utils.general import *; strip_optimizer()
-    # Strip optimizer from 'f' to finalize training, optionally save as 's'
+def strip_optimizer(f='best.pt', s=''):
+    """
+    Strip optimizer from 'f' to finalize training, optionally save as 's'.
+
+    Usage:
+        from ultralytics.yolo.utils.torch_utils import strip_optimizer
+        from pathlib import Path
+        for f in Path('/Users/glennjocher/Downloads/weights').glob('*.pt'):
+            strip_optimizer(f)
+
+    Args:
+        f (str): file path to model state to strip the optimizer from. Default is 'best.pt'.
+        s (str): file path to save the model with stripped optimizer to. Default is ''. If not provided, the original file will be overwritten.
+
+    Returns:
+        None
+    """
     x = torch.load(f, map_location=torch.device('cpu'))
     args = {**DEFAULT_CONFIG_DICT, **x['train_args']}  # combine model args with default args, preferring model args
     if x.get('ema'):
@@ -299,3 +316,54 @@ def guess_task_from_head(head):
         raise SyntaxError("task or model not recognized! Please refer the docs at : ")  # TODO: add docs links
 
     return task
+
+
+def profile(input, ops, n=10, device=None):
+    """ YOLOv8 speed/memory/FLOPs profiler
+    Usage:
+        input = torch.randn(16, 3, 640, 640)
+        m1 = lambda x: x * torch.sigmoid(x)
+        m2 = nn.SiLU()
+        profile(input, [m1, m2], n=100)  # profile over 100 iterations
+    """
+    results = []
+    if not isinstance(device, torch.device):
+        device = select_device(device)
+    print(f"{'Params':>12s}{'GFLOPs':>12s}{'GPU_mem (GB)':>14s}{'forward (ms)':>14s}{'backward (ms)':>14s}"
+          f"{'input':>24s}{'output':>24s}")
+
+    for x in input if isinstance(input, list) else [input]:
+        x = x.to(device)
+        x.requires_grad = True
+        for m in ops if isinstance(ops, list) else [ops]:
+            m = m.to(device) if hasattr(m, 'to') else m  # device
+            m = m.half() if hasattr(m, 'half') and isinstance(x, torch.Tensor) and x.dtype is torch.float16 else m
+            tf, tb, t = 0, 0, [0, 0, 0]  # dt forward, backward
+            try:
+                flops = thop.profile(m, inputs=(x,), verbose=False)[0] / 1E9 * 2  # GFLOPs
+            except Exception:
+                flops = 0
+
+            try:
+                for _ in range(n):
+                    t[0] = time_sync()
+                    y = m(x)
+                    t[1] = time_sync()
+                    try:
+                        _ = (sum(yi.sum() for yi in y) if isinstance(y, list) else y).sum().backward()
+                        t[2] = time_sync()
+                    except Exception:  # no backward method
+                        # print(e)  # for debug
+                        t[2] = float('nan')
+                    tf += (t[1] - t[0]) * 1000 / n  # ms per op forward
+                    tb += (t[2] - t[1]) * 1000 / n  # ms per op backward
+                mem = torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0  # (GB)
+                s_in, s_out = (tuple(x.shape) if isinstance(x, torch.Tensor) else 'list' for x in (x, y))  # shapes
+                p = sum(x.numel() for x in m.parameters()) if isinstance(m, nn.Module) else 0  # parameters
+                print(f'{p:12}{flops:12.4g}{mem:>14.3f}{tf:14.4g}{tb:14.4g}{str(s_in):>24s}{str(s_out):>24s}')
+                results.append([p, flops, mem, tf, tb, s_in, s_out])
+            except Exception as e:
+                print(e)
+                results.append(None)
+            torch.cuda.empty_cache()
+    return results

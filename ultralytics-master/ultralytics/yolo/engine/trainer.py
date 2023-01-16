@@ -1,3 +1,4 @@
+# Ultralytics YOLO 🚀, GPL-3.0 license
 """
 Simple training loop; Boilerplate that could apply to any arbitrary neural network,
 """
@@ -23,9 +24,12 @@ from tqdm import tqdm
 
 import ultralytics.yolo.utils as utils
 from ultralytics import __version__
+from ultralytics.nn.tasks import attempt_load_one_weight
 from ultralytics.yolo.configs import get_config
 from ultralytics.yolo.data.utils import check_dataset, check_dataset_yaml
-from ultralytics.yolo.utils import DEFAULT_CONFIG, LOGGER, RANK, TQDM_BAR_FORMAT, callbacks, colorstr, yaml_save
+from ultralytics.yolo.utils import (DEFAULT_CONFIG, LOGGER, RANK, SETTINGS, TQDM_BAR_FORMAT, callbacks, colorstr,
+                                    yaml_save)
+from ultralytics.yolo.utils.autobatch import check_train_batch_size
 from ultralytics.yolo.utils.checks import check_file, print_args
 from ultralytics.yolo.utils.dist import ddp_cleanup, generate_ddp_command
 from ultralytics.yolo.utils.files import get_latest_run, increment_path
@@ -80,6 +84,7 @@ class BaseTrainer:
         if overrides is None:
             overrides = {}
         self.args = get_config(config, overrides)
+        self.device = utils.torch_utils.select_device(self.args.device, self.args.batch)
         self.check_resume()
         self.console = LOGGER
         self.validator = None
@@ -88,7 +93,7 @@ class BaseTrainer:
         init_seeds(self.args.seed + 1 + RANK, deterministic=self.args.deterministic)
 
         # Dirs
-        project = self.args.project or f"runs/{self.args.task}"
+        project = self.args.project or Path(SETTINGS['runs_dir']) / self.args.task
         name = self.args.name or f"{self.args.mode}"
         self.save_dir = Path(
             self.args.get(
@@ -109,7 +114,6 @@ class BaseTrainer:
             print_args(dict(self.args))
 
         # Device
-        self.device = utils.torch_utils.select_device(self.args.device, self.batch_size)
         self.amp = self.device.type != 'cpu'
         self.scaler = amp.GradScaler(enabled=self.amp)
         if self.device.type == 'cpu':
@@ -134,7 +138,7 @@ class BaseTrainer:
         self.fitness = None
         self.loss = None
         self.tloss = None
-        self.loss_names = None
+        self.loss_names = ['Loss']
         self.csv = self.save_dir / 'results.csv'
         self.plot_idx = [0, 1, 2]
 
@@ -145,13 +149,13 @@ class BaseTrainer:
 
     def add_callback(self, event: str, callback):
         """
-        Appends the given callback. TODO: unused, consider removing
+        Appends the given callback.
         """
         self.callbacks[event].append(callback)
 
     def set_callback(self, event: str, callback):
         """
-        Overrides the existing callbacks with the given callback.  TODO: unused, consider removing
+        Overrides the existing callbacks with the given callback.
         """
         self.callbacks[event] = [callback]
 
@@ -160,7 +164,15 @@ class BaseTrainer:
             callback(self)
 
     def train(self):
-        world_size = torch.cuda.device_count()
+        # Allow device='', device=None on Multi-GPU systems to default to device=0
+        if isinstance(self.args.device, int) or self.args.device:  # i.e. device=0 or device=[0,1,2,3]
+            world_size = torch.cuda.device_count()
+        elif torch.cuda.is_available():  # i.e. device=None or device=''
+            world_size = 1  # default to device 0
+        else:  # i.e. device='cpu' or 'mps'
+            world_size = 0
+
+        # Run subprocess if DDP training, else train normally
         if world_size > 1 and "LOCAL_RANK" not in os.environ:
             command = generate_ddp_command(world_size, self)
             try:
@@ -182,7 +194,7 @@ class BaseTrainer:
 
     def _setup_train(self, rank, world_size):
         """
-        Builds dataloaders and optimizer on correct rank process
+        Builds dataloaders and optimizer on correct rank process.
         """
         # model
         self.run_callbacks("on_pretrain_routine_start")
@@ -191,6 +203,15 @@ class BaseTrainer:
         self.set_model_attributes()
         if world_size > 1:
             self.model = DDP(self.model, device_ids=[rank])
+
+        # Batch size
+        if self.batch_size == -1:
+            if RANK == -1:  # single-GPU only, estimate best batch size
+                self.batch_size = check_train_batch_size(self.model, self.args.imgsz, self.amp)
+            else:
+                SyntaxError('batch=-1 to use AutoBatch is only available in Single-GPU training. '
+                            'Please pass a valid batch size value for Multi-GPU DDP training, i.e. batch=16')
+
         # Optimizer
         self.accumulate = max(round(self.args.nbs / self.batch_size), 1)  # accumulate loss before optimizing
         self.args.weight_decay *= self.batch_size * self.accumulate / self.args.nbs  # scale weight_decay
@@ -213,7 +234,7 @@ class BaseTrainer:
         if rank in {0, -1}:
             self.test_loader = self.get_dataloader(self.testset, batch_size=batch_size * 2, rank=-1, mode="val")
             self.validator = self.get_validator()
-            metric_keys = self.validator.metric_keys + self.label_loss_items(prefix="val")
+            metric_keys = self.validator.metrics.keys + self.label_loss_items(prefix="val")
             self.metrics = dict(zip(metric_keys, [0] * len(metric_keys)))  # TODO: init metrics for plot_results()?
             self.ema = ModelEMA(self.model)
         self.resume_training(ckpt)
@@ -305,7 +326,8 @@ class BaseTrainer:
 
                 self.run_callbacks("on_train_batch_end")
 
-            lr = {f"lr{ir}": x['lr'] for ir, x in enumerate(self.optimizer.param_groups)}  # for loggers
+            self.lr = {f"lr/pg{ir}": x['lr'] for ir, x in enumerate(self.optimizer.param_groups)}  # for loggers
+
             self.scheduler.step()
             self.run_callbacks("on_train_epoch_end")
 
@@ -316,7 +338,7 @@ class BaseTrainer:
                 final_epoch = (epoch + 1 == self.epochs)
                 if self.args.val or final_epoch:
                     self.metrics, self.fitness = self.validate()
-                self.save_metrics(metrics={**self.label_loss_items(self.tloss), **self.metrics, **lr})
+                self.save_metrics(metrics={**self.label_loss_items(self.tloss), **self.metrics, **self.lr})
 
                 # Save model
                 if self.args.save or (epoch + 1 == self.epochs):
@@ -361,29 +383,26 @@ class BaseTrainer:
 
     def get_dataset(self, data):
         """
-        Get train, val path from data dict if it exists. Returns None if data format is not recognized
+        Get train, val path from data dict if it exists. Returns None if data format is not recognized.
         """
         return data["train"], data.get("val") or data.get("test")
 
     def setup_model(self):
         """
-        load/create/download model for any task
+        load/create/download model for any task.
         """
-        if isinstance(self.model, torch.nn.Module):  # if loaded model is passed
+        if isinstance(self.model, torch.nn.Module):  # if model is loaded beforehand. No setup needed
             return
-            # We should improve the code flow here. This function looks hacky
-        model = self.model
-        pretrained = not str(model).endswith(".yaml")
-        # config
-        if not pretrained:
-            model = check_file(model)
-        ckpt = self.load_ckpt(model) if pretrained else None
-        weights = ckpt["model"] if isinstance(ckpt, dict) else ckpt  # torchvision weights are not dicts
-        self.model = self.load_model(model_cfg=None if pretrained else model, weights=weights)
-        return ckpt
 
-    def load_ckpt(self, ckpt):
-        return torch.load(ckpt, map_location='cpu')
+        model, weights = self.model, None
+        ckpt = None
+        if str(model).endswith(".pt"):
+            weights, ckpt = attempt_load_one_weight(model)
+            cfg = ckpt["model"].yaml
+        else:
+            cfg = model
+        self.model = self.get_model(cfg=cfg, weights=weights)  # calls Model(cfg, weights)
+        return ckpt
 
     def optimizer_step(self):
         self.scaler.unscale_(self.optimizer)  # unscale gradients
@@ -396,15 +415,13 @@ class BaseTrainer:
 
     def preprocess_batch(self, batch):
         """
-        Allows custom preprocessing model inputs and ground truths depending on task type
+        Allows custom preprocessing model inputs and ground truths depending on task type.
         """
         return batch
 
     def validate(self):
         """
-        Runs validation on test set using self.validator.
-        # TODO: discuss validator class. Enforce that a validator metrics dict should contain
-        "fitness" metric.
+        Runs validation on test set using self.validator. The returned dict is expected to contain "fitness" key.
         """
         metrics = self.validator(self)
         fitness = metrics.pop("fitness", -self.loss.detach().cpu().numpy())  # use loss as fitness measure if not found
@@ -414,15 +431,17 @@ class BaseTrainer:
 
     def log(self, text, rank=-1):
         """
-        Logs the given text to given ranks process if provided, otherwise logs to all ranks
-        :param text: text to log
-        :param rank: List[Int]
+        Logs the given text to given ranks process if provided, otherwise logs to all ranks.
+
+        Args"
+            text (str): text to log
+            rank (List[Int]): process rank
 
         """
         if rank in {-1, 0}:
             self.console.info(text)
 
-    def load_model(self, model_cfg=None, weights=None, verbose=True):
+    def get_model(self, cfg=None, weights=None, verbose=True):
         raise NotImplementedError("This task trainer doesn't support loading cfg files")
 
     def get_validator(self):
@@ -430,13 +449,13 @@ class BaseTrainer:
 
     def get_dataloader(self, dataset_path, batch_size=16, rank=0):
         """
-        Returns dataloader derived from torch.data.Dataloader
+        Returns dataloader derived from torch.data.Dataloader.
         """
         raise NotImplementedError("get_dataloader function not implemented in trainer")
 
     def criterion(self, preds, batch):
         """
-        Returns loss and individual loss items as Tensor
+        Returns loss and individual loss items as Tensor.
         """
         raise NotImplementedError("criterion function not implemented in trainer")
 
@@ -487,10 +506,12 @@ class BaseTrainer:
     def check_resume(self):
         resume = self.args.resume
         if resume:
-            last = Path(check_file(resume) if isinstance(resume, str) else get_latest_run())
+            last = Path(check_file(resume) if isinstance(resume, (str, Path)) else get_latest_run())
             args_yaml = last.parent.parent / 'args.yaml'  # train options yaml
-            if args_yaml.is_file():
-                args = get_config(args_yaml)  # replace
+            assert args_yaml.is_file(), \
+                FileNotFoundError('Resume checkpoint f{last} not found. '
+                                  'Please pass a valid checkpoint to resume from, i.e. yolo resume=path/to/last.pt')
+            args = get_config(args_yaml)  # replace
             args.model, resume = str(last), True  # reinstate
             self.args = args
         self.resume = resume

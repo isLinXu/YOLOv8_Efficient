@@ -1,27 +1,35 @@
+# Ultralytics YOLO 🚀, GPL-3.0 license
+
 from copy import copy
 
 import hydra
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
 from ultralytics.nn.tasks import SegmentationModel
 from ultralytics.yolo import v8
 from ultralytics.yolo.utils import DEFAULT_CONFIG
-from ultralytics.yolo.utils.loss import BboxLoss
-from ultralytics.yolo.utils.ops import crop_mask, xywh2xyxy, xyxy2xywh
+from ultralytics.yolo.utils.ops import crop_mask, xyxy2xywh
 from ultralytics.yolo.utils.plotting import plot_images, plot_results
-from ultralytics.yolo.utils.tal import TaskAlignedAssigner, dist2bbox, make_anchors
+from ultralytics.yolo.utils.tal import make_anchors
 from ultralytics.yolo.utils.torch_utils import de_parallel
+from ultralytics.yolo.v8.detect.train import Loss
 
 
 # BaseTrainer python usage
 class SegmentationTrainer(v8.detect.DetectionTrainer):
 
-    def load_model(self, model_cfg=None, weights=None, verbose=True):
-        model = SegmentationModel(model_cfg or weights.yaml, ch=3, nc=self.data["nc"], verbose=verbose)
+    def __init__(self, config=DEFAULT_CONFIG, overrides=None):
+        if overrides is None:
+            overrides = {}
+        overrides["task"] = "segment"
+        super().__init__(config, overrides)
+
+    def get_model(self, cfg=None, weights=None, verbose=True):
+        model = SegmentationModel(cfg, ch=3, nc=self.data["nc"], verbose=verbose)
         if weights:
-            model.load(weights, verbose)
+            model.load(weights)
+
         return model
 
     def get_validator(self):
@@ -50,51 +58,12 @@ class SegmentationTrainer(v8.detect.DetectionTrainer):
 
 
 # Criterion class for computing training losses
-class SegLoss:
+class SegLoss(Loss):
 
     def __init__(self, model, overlap=True):  # model must be de-paralleled
-
-        device = next(model.parameters()).device  # get model device
-        h = model.args  # hyperparameters
-
-        m = model.model[-1]  # Detect() module
-        self.bce = nn.BCEWithLogitsLoss(reduction='none')
-        self.hyp = h
-        self.stride = m.stride  # model strides
-        self.nc = m.nc  # number of classes
-        self.no = m.no
-        self.nm = m.nm  # number of masks
-        self.reg_max = m.reg_max
+        super().__init__(model)
+        self.nm = model.model[-1].nm  # number of masks
         self.overlap = overlap
-        self.device = device
-
-        self.use_dfl = m.reg_max > 1
-        self.assigner = TaskAlignedAssigner(topk=10, num_classes=self.nc, alpha=0.5, beta=6.0)
-        self.bbox_loss = BboxLoss(m.reg_max - 1, use_dfl=self.use_dfl).to(device)
-        self.proj = torch.arange(m.reg_max, dtype=torch.float, device=device)
-
-    def preprocess(self, targets, batch_size, scale_tensor):
-        if targets.shape[0] == 0:
-            out = torch.zeros(batch_size, 0, 5, device=self.device)
-        else:
-            i = targets[:, 0]  # image index
-            _, counts = i.unique(return_counts=True)
-            out = torch.zeros(batch_size, counts.max(), 5, device=self.device)
-            for j in range(batch_size):
-                matches = i == j
-                n = matches.sum()
-                if n:
-                    out[j, :n] = targets[matches, 1:]
-            out[..., 1:5] = xywh2xyxy(out[..., 1:5].mul_(scale_tensor))
-        return out
-
-    def bbox_decode(self, anchor_points, pred_dist):
-        if self.use_dfl:
-            b, a, c = pred_dist.shape  # batch, anchors, channels
-            pred_dist = pred_dist.view(b, a, 4, c // 4).softmax(3).matmul(self.proj.type(pred_dist.dtype))
-            # pred_dist = pred_dist.view(b, a, c // 4, 4).transpose(2,3).softmax(3).matmul(self.proj.type(pred_dist.dtype))
-            # pred_dist = (pred_dist.view(b, a, c // 4, 4).softmax(2) * self.proj.type(pred_dist.dtype).view(1, 1, -1, 1)).sum(2)
-        return dist2bbox(pred_dist, anchor_points, xywh=False)
 
     def __call__(self, preds, batch):
         loss = torch.zeros(4, device=self.device)  # box, cls, dfl
@@ -158,10 +127,10 @@ class SegLoss:
         # else:
         #     loss[1] += proto.sum() * 0
 
-        loss[0] *= 7.5  # box gain
-        loss[1] *= 7.5 / batch_size  # seg gain
-        loss[2] *= 0.5  # cls gain
-        loss[3] *= 1.5  # dfl gain
+        loss[0] *= self.hyp.box  # box gain
+        loss[1] *= self.hyp.box / batch_size  # seg gain
+        loss[2] *= self.hyp.cls  # cls gain
+        loss[3] *= self.hyp.dfl  # dfl gain
 
         return loss.sum() * batch_size, loss.detach()  # loss(box, cls, dfl)
 
@@ -174,8 +143,9 @@ class SegLoss:
 
 @hydra.main(version_base=None, config_path=str(DEFAULT_CONFIG.parent), config_name=DEFAULT_CONFIG.name)
 def train(cfg):
-    cfg.model = cfg.model or "yolov8n-seg.yaml"
+    cfg.model = cfg.model or "yolov8n-seg.pt"
     cfg.data = cfg.data or "coco128-seg.yaml"  # or yolo.ClassificationDataset("mnist")
+    cfg.device = cfg.device if cfg.device is not None else ''
     # trainer = SegmentationTrainer(cfg)
     # trainer.train()
     from ultralytics import YOLO
@@ -184,11 +154,4 @@ def train(cfg):
 
 
 if __name__ == "__main__":
-    """
-    CLI usage:
-    python ultralytics/yolo/v8/segment/train.py model=yolov8n-seg.yaml data=coco128-segments epochs=100 imgsz=640
-
-    TODO:
-    Direct cli support, i.e, yolov8 classify_train args.epochs 10
-    """
     train()

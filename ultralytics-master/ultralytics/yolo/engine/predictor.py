@@ -1,4 +1,4 @@
-# predictor engine by Ultralytics
+# Ultralytics YOLO 🚀, GPL-3.0 license
 """
 Run prediction on images, videos, directories, globs, YouTube, webcam, streams, etc.
 Usage - sources:
@@ -35,7 +35,7 @@ from ultralytics.nn.autobackend import AutoBackend
 from ultralytics.yolo.configs import get_config
 from ultralytics.yolo.data.dataloaders.stream_loaders import LoadImages, LoadScreenshots, LoadStreams
 from ultralytics.yolo.data.utils import IMG_FORMATS, VID_FORMATS
-from ultralytics.yolo.utils import DEFAULT_CONFIG, LOGGER, callbacks, colorstr, ops
+from ultralytics.yolo.utils import DEFAULT_CONFIG, LOGGER, SETTINGS, callbacks, colorstr, ops
 from ultralytics.yolo.utils.checks import check_file, check_imgsz, check_imshow
 from ultralytics.yolo.utils.files import increment_path
 from ultralytics.yolo.utils.torch_utils import select_device, smart_inference_mode
@@ -57,7 +57,6 @@ class BasePredictor:
         dataset (Dataset): Dataset used for prediction.
         vid_path (str): Path to video file.
         vid_writer (cv2.VideoWriter): Video writer for saving video output.
-        view_img (bool): Whether to view image output.
         annotator (Annotator): Annotator used for prediction.
         data_path (str): Path to data.
     """
@@ -73,11 +72,13 @@ class BasePredictor:
         if overrides is None:
             overrides = {}
         self.args = get_config(config, overrides)
-        project = self.args.project or f"runs/{self.args.task}"
+        project = self.args.project or Path(SETTINGS['runs_dir']) / self.args.task
         name = self.args.name or f"{self.args.mode}"
         self.save_dir = increment_path(Path(project) / name, exist_ok=self.args.exist_ok)
-        (self.save_dir / 'labels' if self.args.save_txt else self.save_dir).mkdir(parents=True, exist_ok=True)
-
+        if self.args.save:
+            (self.save_dir / 'labels' if self.args.save_txt else self.save_dir).mkdir(parents=True, exist_ok=True)
+        if self.args.conf is None:
+            self.args.conf = 0.25  # default conf=0.25
         self.done_setup = False
 
         # Usable if setup is done
@@ -86,9 +87,9 @@ class BasePredictor:
         self.device = None
         self.dataset = None
         self.vid_path, self.vid_writer = None, None
-        self.view_img = None
         self.annotator = None
         self.data_path = None
+        self.output = {}
         self.callbacks = defaultdict(list, {k: [v] for k, v in callbacks.default_callbacks.items()})  # add callbacks
         callbacks.add_integration_callbacks(self)
 
@@ -104,9 +105,9 @@ class BasePredictor:
     def postprocess(self, preds, img, orig_img):
         return preds
 
-    def setup(self, source=None, model=None):
+    def setup(self, source=None, model=None, return_outputs=False):
         # source
-        source = str(source or self.args.source)
+        source = str(source if source is not None else self.args.source)
         is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
         is_url = source.lower().startswith(('rtsp://', 'rtmp://', 'http://', 'https://'))
         webcam = source.isnumeric() or source.endswith('.streams') or (is_url and not is_file)
@@ -125,13 +126,27 @@ class BasePredictor:
         # Dataloader
         bs = 1  # batch_size
         if webcam:
-            self.view_img = check_imshow(warn=True)
-            self.dataset = LoadStreams(source, imgsz=imgsz, stride=stride, auto=pt, vid_stride=self.args.vid_stride)
+            self.args.show = check_imshow(warn=True)
+            self.dataset = LoadStreams(source,
+                                       imgsz=imgsz,
+                                       stride=stride,
+                                       auto=pt,
+                                       transforms=getattr(model.model, 'transforms', None),
+                                       vid_stride=self.args.vid_stride)
             bs = len(self.dataset)
         elif screenshot:
-            self.dataset = LoadScreenshots(source, imgsz=imgsz, stride=stride, auto=pt)
+            self.dataset = LoadScreenshots(source,
+                                           imgsz=imgsz,
+                                           stride=stride,
+                                           auto=pt,
+                                           transforms=getattr(model.model, 'transforms', None))
         else:
-            self.dataset = LoadImages(source, imgsz=imgsz, stride=stride, auto=pt, vid_stride=self.args.vid_stride)
+            self.dataset = LoadImages(source,
+                                      imgsz=imgsz,
+                                      stride=stride,
+                                      auto=pt,
+                                      transforms=getattr(model.model, 'transforms', None),
+                                      vid_stride=self.args.vid_stride)
         self.vid_path, self.vid_writer = [None] * bs, [None] * bs
         model.warmup(imgsz=(1 if pt or model.triton else bs, 3, *imgsz))  # warmup
 
@@ -141,13 +156,15 @@ class BasePredictor:
         self.imgsz = imgsz
         self.done_setup = True
         self.device = device
+        self.return_outputs = return_outputs
 
         return model
 
     @smart_inference_mode()
-    def __call__(self, source=None, model=None):
+    def __call__(self, source=None, model=None, return_outputs=False):
         self.run_callbacks("on_predict_start")
-        model = self.model if self.done_setup else self.setup(source, model)
+        model = self.model if self.done_setup else self.setup(source, model, return_outputs)
+        model.eval()
         self.seen, self.windows, self.dt = 0, [], (ops.Profile(), ops.Profile(), ops.Profile())
         for batch in self.dataset:
             self.run_callbacks("on_predict_batch_start")
@@ -174,9 +191,13 @@ class BasePredictor:
 
                 if self.args.show:
                     self.show(p)
-            
+
                 if self.args.save:
                     self.save_preds(vid_cap, i, str(self.save_dir / p.name))
+
+            if self.return_outputs:
+                yield self.output
+                self.output.clear()
 
             # Print time (inference-only)
             LOGGER.info(f"{s}{'' if len(preds) else '(no detections), '}{self.dt[1].dt * 1E3:.1f}ms")
@@ -193,6 +214,11 @@ class BasePredictor:
             LOGGER.info(f"Results saved to {colorstr('bold', self.save_dir)}{s}")
 
         self.run_callbacks("on_predict_end")
+
+    def predict_cli(self, source=None, model=None, return_outputs=False):
+        # as __call__ is a generator now so have to treat it like a generator
+        for _ in (self.__call__(source, model, return_outputs)):
+            pass
 
     def show(self, p):
         im0 = self.annotator.result()
@@ -214,7 +240,7 @@ class BasePredictor:
                 if isinstance(self.vid_writer[idx], cv2.VideoWriter):
                     self.vid_writer[idx].release()  # release previous video writer
                 if vid_cap:  # video
-                    fps = vid_cap.get(cv2.CAP_PROP_FPS)
+                    fps = int(vid_cap.get(cv2.CAP_PROP_FPS))  # integer required, floats produce error in MP4 codec
                     w = int(vid_cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                     h = int(vid_cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
                 else:  # stream

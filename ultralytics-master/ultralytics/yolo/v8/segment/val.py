@@ -1,3 +1,5 @@
+# Ultralytics YOLO 🚀, GPL-3.0 license
+
 import os
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
@@ -11,39 +13,32 @@ from ultralytics.yolo.utils import DEFAULT_CONFIG, NUM_THREADS, ops
 from ultralytics.yolo.utils.checks import check_requirements
 from ultralytics.yolo.utils.metrics import ConfusionMatrix, SegmentMetrics, box_iou, mask_iou
 from ultralytics.yolo.utils.plotting import output_to_target, plot_images
-
-from ..detect import DetectionValidator
+from ultralytics.yolo.v8.detect import DetectionValidator
 
 
 class SegmentationValidator(DetectionValidator):
 
     def __init__(self, dataloader=None, save_dir=None, pbar=None, logger=None, args=None):
         super().__init__(dataloader, save_dir, pbar, logger, args)
-        self.metrics = SegmentMetrics(save_dir=self.save_dir, plot=self.args.plots)
+        self.args.task = "segment"
+        self.metrics = SegmentMetrics(save_dir=self.save_dir)
 
     def preprocess(self, batch):
-        batch["img"] = batch["img"].to(self.device, non_blocking=True)
-        batch["img"] = (batch["img"].half() if self.args.half else batch["img"].float()) / 255
+        batch = super().preprocess(batch)
         batch["masks"] = batch["masks"].to(self.device).float()
-        self.nb, _, self.height, self.width = batch["img"].shape  # batch size, channels, height, width
-        self.targets = torch.cat((batch["batch_idx"].view(-1, 1), batch["cls"].view(-1, 1), batch["bboxes"]), 1)
-        self.targets = self.targets.to(self.device)
-        height, width = batch["img"].shape[2:]
-        self.targets[:, 2:] *= torch.tensor((width, height, width, height), device=self.device)  # to pixels
-        self.lb = [self.targets[self.targets[:, 0] == i, 1:]
-                   for i in range(self.nb)] if self.args.save_hybrid else []  # for autolabelling
-
         return batch
 
     def init_metrics(self, model):
         head = model.model[-1] if self.training else model.model.model[-1]
-        self.is_coco = self.data.get('val', '').endswith(f'coco{os.sep}val2017.txt')  # is COCO dataset
+        val = self.data.get('val', '')  # validation path
+        self.is_coco = isinstance(val, str) and val.endswith(f'coco{os.sep}val2017.txt')  # is COCO dataset
         self.class_map = ops.coco80_to_coco91_class() if self.is_coco else list(range(1000))
         self.args.save_json |= self.is_coco and not self.training  # run on final val if training COCO
         self.nc = head.nc
         self.nm = head.nm if hasattr(head, "nm") else 32
         self.names = model.names
         self.metrics.names = self.names
+        self.metrics.plot = self.args.plots
         self.confusion_matrix = ConfusionMatrix(nc=self.nc)
         self.plot_masks = []
         self.seen = 0
@@ -72,10 +67,11 @@ class SegmentationValidator(DetectionValidator):
     def update_metrics(self, preds, batch):
         # Metrics
         for si, (pred, proto) in enumerate(zip(preds[0], preds[1])):
-            labels = self.targets[self.targets[:, 0] == si, 1:]
-            nl, npr = labels.shape[0], pred.shape[0]  # number of labels, predictions
+            idx = batch["batch_idx"] == si
+            cls = batch["cls"][idx]
+            bbox = batch["bboxes"][idx]
+            nl, npr = cls.shape[0], pred.shape[0]  # number of labels, predictions
             shape = batch["ori_shape"][si]
-            # path = batch["shape"][si][0]
             correct_masks = torch.zeros(npr, self.niou, dtype=torch.bool, device=self.device)  # init
             correct_bboxes = torch.zeros(npr, self.niou, dtype=torch.bool, device=self.device)  # init
             self.seen += 1
@@ -83,13 +79,13 @@ class SegmentationValidator(DetectionValidator):
             if npr == 0:
                 if nl:
                     self.stats.append((correct_masks, correct_bboxes, *torch.zeros(
-                        (2, 0), device=self.device), labels[:, 0]))
+                        (2, 0), device=self.device), cls.squeeze(-1)))
                     if self.args.plots:
-                        self.confusion_matrix.process_batch(detections=None, labels=labels[:, 0])
+                        self.confusion_matrix.process_batch(detections=None, labels=cls.squeeze(-1))
                 continue
 
             # Masks
-            midx = [si] if self.args.overlap_mask else self.targets[:, 0] == si
+            midx = [si] if self.args.overlap_mask else idx
             gt_masks = batch["masks"][midx]
             pred_masks = self.process(proto, pred[:, 6:], pred[:, :4], shape=batch["img"][si].shape[1:])
 
@@ -97,13 +93,17 @@ class SegmentationValidator(DetectionValidator):
             if self.args.single_cls:
                 pred[:, 5] = 0
             predn = pred.clone()
-            ops.scale_boxes(batch["img"][si].shape[1:], predn[:, :4], shape)  # native-space pred
+            ops.scale_boxes(batch["img"][si].shape[1:], predn[:, :4], shape,
+                            ratio_pad=batch["ratio_pad"][si])  # native-space pred
 
             # Evaluate
             if nl:
-                tbox = ops.xywh2xyxy(labels[:, 1:5])  # target boxes
-                ops.scale_boxes(batch["img"][si].shape[1:], tbox, shape)  # native-space labels
-                labelsn = torch.cat((labels[:, 0:1], tbox), 1)  # native-space labels
+                height, width = batch["img"].shape[2:]
+                tbox = ops.xywh2xyxy(bbox) * torch.tensor(
+                    (width, height, width, height), device=self.device)  # target boxes
+                ops.scale_boxes(batch["img"][si].shape[1:], tbox, shape,
+                                ratio_pad=batch["ratio_pad"][si])  # native-space labels
+                labelsn = torch.cat((cls, tbox), 1)  # native-space labels
                 correct_bboxes = self._process_batch(predn, labelsn)
                 # TODO: maybe remove these `self.` arguments as they already are member variable
                 correct_masks = self._process_batch(predn,
@@ -114,7 +114,9 @@ class SegmentationValidator(DetectionValidator):
                                                     masks=True)
                 if self.args.plots:
                     self.confusion_matrix.process_batch(predn, labelsn)
-            self.stats.append((correct_masks, correct_bboxes, pred[:, 4], pred[:, 5], labels[:, 0]))  # conf, pcls, tcls
+
+            # Append correct_masks, correct_boxes, pconf, pcls, tcls
+            self.stats.append((correct_masks, correct_bboxes, pred[:, 4], pred[:, 5], cls.squeeze(-1)))
 
             pred_masks = torch.as_tensor(pred_masks, dtype=torch.uint8)
             if self.args.plots and self.batch_i < 3:
@@ -123,7 +125,9 @@ class SegmentationValidator(DetectionValidator):
             # Save
             if self.args.save_json:
                 pred_masks = ops.scale_image(batch["img"][si].shape[1:],
-                                             pred_masks.permute(1, 2, 0).contiguous().cpu().numpy(), shape)
+                                             pred_masks.permute(1, 2, 0).contiguous().cpu().numpy(),
+                                             shape,
+                                             ratio_pad=batch["ratio_pad"][si])
                 self.pred_to_json(predn, batch["im_file"][si], pred_masks)
             # if self.args.save_txt:
             #    save_one_txt(predn, save_conf, shape, file=save_dir / 'labels' / f'{path.stem}.txt')
@@ -164,19 +168,6 @@ class SegmentationValidator(DetectionValidator):
                     matches = matches[np.unique(matches[:, 0], return_index=True)[1]]
                 correct[matches[:, 1].astype(int), i] = True
         return torch.tensor(correct, dtype=torch.bool, device=detections.device)
-
-    # TODO: probably add this to class Metrics
-    @property
-    def metric_keys(self):
-        return [
-            "metrics/precision(B)",
-            "metrics/recall(B)",
-            "metrics/mAP50(B)",
-            "metrics/mAP50-95(B)",  # metrics
-            "metrics/precision(M)",
-            "metrics/recall(M)",
-            "metrics/mAP50(M)",
-            "metrics/mAP50-95(M)",]
 
     def plot_val_samples(self, batch, ni):
         plot_images(batch["img"],
@@ -243,8 +234,8 @@ class SegmentationValidator(DetectionValidator):
                     eval.accumulate()
                     eval.summarize()
                     idx = i * 4 + 2
-                    stats[self.metric_keys[idx + 1]], stats[
-                        self.metric_keys[idx]] = eval.stats[:2]  # update mAP50-95 and mAP50
+                    stats[self.metrics.keys[idx + 1]], stats[
+                        self.metrics.keys[idx]] = eval.stats[:2]  # update mAP50-95 and mAP50
             except Exception as e:
                 self.logger.warning(f'pycocotools unable to run: {e}')
         return stats
