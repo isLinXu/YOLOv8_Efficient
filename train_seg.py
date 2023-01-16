@@ -13,10 +13,10 @@ ROOT = PackageProjectUtil.project_root_path()
 def parse_opt():
     """
            CLI usage:
-           python ultralytics/yolo/v8/detect/train.py model=yolov8n.yaml data=coco128 epochs=100 imgsz=640
+           python ultralytics/yolo/v8/segment/train.py model=yolov8n-seg.yaml data=coco128 epochs=100 imgsz=640
 
            TODO:
-           yolo task=detect mode=train model=yolov8n.yaml data=coco128.yaml epochs=100
+           yolo task=seg mode=train model=yolov8n-seg.yaml data=coco128-seg.yaml epochs=100
        """
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str,default='seg', help='select train task, i.e.  detect or classify, seg')
