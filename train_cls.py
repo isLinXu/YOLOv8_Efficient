@@ -13,7 +13,7 @@ ROOT = PackageProjectUtil.project_root_path()
 def parse_opt():
     """
            CLI usage:
-           python ultralytics/yolo/v8/detect/train.py model=yolov8n.yaml data=coco128 epochs=100 imgsz=640
+           python ultralytics/yolo/v8/classify/train.py model=yolov8n-cls.yaml data=mnist160 epochs=100 imgsz=640
 
            RUN:
            yolo task=classify mode=train model=yolov8n.yaml data=coco128.yaml epochs=100
