@@ -9,8 +9,9 @@ Simple and efficient use for yolov8
 
 ---
 
-[![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Fatrox%2Fsync-dotenv%2Fbadge&style=flat)](https://github.com/isLinXu/Yolov8_Efficient)  ![img](https://badgen.net/badge/icon/learning?icon=deepscan&label)
-![](https://badgen.net/github/stars/isLinXu/Yolov8_Efficient)![](https://badgen.net/github/forks/isLinXu/Yolov8_Efficient)![](https://badgen.net/github/prs/isLinXu/Yolov8_Efficient)![](https://badgen.net/github/releases/isLinXu/Yolov8_Efficient)![](https://badgen.net/github/license/isLinXu/Yolov8_Efficient)![img](https://hits.dwyl.com/isLinXu/Yolov8_Efficient.svg)
+![GitHub watchers](https://img.shields.io/github/watchers/isLinXu/Yolov8_Efficient.svg?style=social) ![GitHub stars](https://img.shields.io/github/stars/isLinXu/Yolov8_Efficient.svg?style=social) ![GitHub forks](https://img.shields.io/github/forks/isLinXu/Yolov8_Efficient.svg?style=social) ![GitHub followers](https://img.shields.io/github/followers/isLinXu.svg?style=social)
+ [![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Fatrox%2Fsync-dotenv%2Fbadge&style=flat)](https://github.com/isLinXu/Yolov8_Efficient)  ![img](https://badgen.net/badge/icon/learning?icon=deepscan&label)![GitHub repo size](https://img.shields.io/github/repo-size/isLinXu/Yolov8_Efficient.svg?style=flat-square) ![GitHub language count](https://img.shields.io/github/languages/count/isLinXu/Yolov8_Efficient)  ![GitHub last commit](https://img.shields.io/github/last-commit/isLinXu/Yolov8_Efficient) ![GitHub](https://img.shields.io/github/license/isLinXu/Yolov8_Efficient.svg?style=flat-square)![img](https://hits.dwyl.com/isLinXu/Yolov8_Efficient.svg)
+
 
 ## 😎 About
 
@@ -72,6 +73,7 @@ Currently doing the following work:
 ---
 
 - ... ...
+- 2023/01/16 - add train_detect, train_cls and train_seg
 - 2023/01/10 - add yolov8 metrics and logs
 - 2023/01/09 - add val.py and fix some error
 - 2023/01/07 - fix some error and warning 
@@ -82,7 +84,7 @@ Currently doing the following work:
 
 ## 🤔 TODO：
 
-- [ ] Model testing and validation in progress
+- [x] Model testing and validation in progress
 - [ ] 
 
 
