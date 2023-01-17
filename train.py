@@ -152,49 +152,6 @@ def train(hyp, opt, callbacks):  # hyp is path/to/hyp.yaml or hyp dictionary
                    warmup_epochs=warmup_epochs, warmup_momentum=warmup_momentum, warmup_bias_lr=warmup_bias_lr,
                    box=box, cls=cls, device=device)  # DDP mode
     # amp = check_amp(model)  # check AMP
-    #
-    # # Freeze
-    # freeze = [f'model.{x}.' for x in (freeze if len(freeze) > 1 else range(freeze[0]))]  # layers to freeze
-    # for k, v in model.named_parameters():
-    #     v.requires_grad = True  # train all layers
-    #     # v.register_hook(lambda x: torch.nan_to_num(x))  # NaN to 0 (commented for erratic training results)
-    #     if any(x in k for x in freeze):
-    #         LOGGER.info(f'freezing {k}')
-    #         v.requires_grad = False
-    #
-    # # Image size
-    # gs = max(int(model.stride.max()), 32)  # grid size (max stride)
-    # imgsz = check_img_size(opt.imgsz, gs, floor=gs * 2)  # verify imgsz is gs-multiple
-    #
-    # # Batch size
-    # if RANK == -1 and batch_size == -1:  # single-GPU only, estimate best batch size
-    #     batch_size = check_train_batch_size(model, imgsz, amp)
-    #     loggers.on_params_update({"batch_size": batch_size})
-    #
-    # # Optimizer
-    # # nbs = 64  # nominal batch size
-    # accumulate = max(round(nbs / batch_size), 1)  # accumulate loss before optimizing
-    # hyp['weight_decay'] *= batch_size * accumulate / nbs  # scale weight_decay
-    # optimizer = smart_optimizer(model, opt.optimizer, hyp['lr0'], hyp['momentum'], hyp['weight_decay'])
-    #
-    # # Scheduler
-    # if opt.cos_lr:
-    #     lf = one_cycle(1, hyp['lrf'], epochs)  # cosine 1->hyp['lrf']
-    # else:
-    #     lf = lambda x: (1 - x / epochs) * (1.0 - hyp['lrf']) + hyp['lrf']  # linear
-    # scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lf)  # plot_lr_scheduler(optimizer, scheduler, epochs)
-    #
-    # # EMA
-    # ema = ModelEMA(model) if RANK in {-1, 0} else None
-    #
-    # # Resume
-    # best_fitness, start_epoch = 0.0, 0
-    # if pretrained:
-    #     if resume:
-    #         model = YOLO()
-    #         # model.resume()
-    #         best_fitness, start_epoch, epochs = smart_resume(ckpt, optimizer, ema, weights, epochs, resume)
-    #     del ckpt, csd
 
 
 
