@@ -8,8 +8,10 @@
 
 ---
 
-![GitHub watchers](https://img.shields.io/github/watchers/isLinXu/Yolov8_Efficient.svg?style=social) ![GitHub stars](https://img.shields.io/github/stars/isLinXu/Yolov8_Efficient.svg?style=social) ![GitHub forks](https://img.shields.io/github/forks/isLinXu/Yolov8_Efficient.svg?style=social) ![GitHub followers](https://img.shields.io/github/followers/isLinXu.svg?style=social)
- [![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Fatrox%2Fsync-dotenv%2Fbadge&style=flat)](https://github.com/isLinXu/Yolov8_Efficient)  ![img](https://badgen.net/badge/icon/learning?icon=deepscan&label)![GitHub repo size](https://img.shields.io/github/repo-size/isLinXu/Yolov8_Efficient.svg?style=flat-square) ![GitHub language count](https://img.shields.io/github/languages/count/isLinXu/Yolov8_Efficient)  ![GitHub last commit](https://img.shields.io/github/last-commit/isLinXu/Yolov8_Efficient) ![GitHub](https://img.shields.io/github/license/isLinXu/Yolov8_Efficient.svg?style=flat-square)![img](https://hits.dwyl.com/isLinXu/Yolov8_Efficient.svg)
+![GitHub stars](https://img.shields.io/github/stars/isLinXu/Yolov8_Efficient)
+![GitHub forks](https://img.shields.io/github/forks/isLinXu/Yolov8_Efficient) 
+![GitHub watchers](https://img.shields.io/github/watchers/isLinXu/Yolov8_Efficient) 
+[![Build Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Fatrox%2Fsync-dotenv%2Fbadge&style=flat)](https://github.com/isLinXu/Yolov8_Efficient)  ![img](https://badgen.net/badge/icon/learning?icon=deepscan&label)![GitHub repo size](https://img.shields.io/github/repo-size/isLinXu/Yolov8_Efficient.svg?style=flat-square) ![GitHub language count](https://img.shields.io/github/languages/count/isLinXu/Yolov8_Efficient)  ![GitHub last commit](https://img.shields.io/github/last-commit/isLinXu/Yolov8_Efficient) ![GitHub](https://img.shields.io/github/license/isLinXu/Yolov8_Efficient.svg?style=flat-square)![img](https://hits.dwyl.com/isLinXu/Yolov8_Efficient.svg)
 
 ## 😎 介绍
 
