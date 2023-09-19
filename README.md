@@ -25,6 +25,12 @@ This project is based on ultralytics and yolov5 for comprehensive reference, and
 
 Currently doing the following work:
 
+- build gradio demo
+- 
+| ![](https://user-images.githubusercontent.com/59380685/265492490-9353cd87-052d-4dcb-9115-afb7954c00dd.png) | ![](https://user-images.githubusercontent.com/59380685/265493664-939d5c5f-f571-4a84-b6e9-6193f4613f37.png) | ![](https://user-images.githubusercontent.com/59380685/265493715-e920d82e-c85d-43e1-a7ae-c0a706c0bb95.png) | ![](https://user-images.githubusercontent.com/59380685/265493821-19954089-befb-4cec-baac-688427a84589.png) |
+| :----------------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: | :----------------------------------------------------------: |
+|                          YOLOv8-det                          |                          YOLOv8-seg                          |                          YOLOv8-seg                          |                          YOLOv8-seg                          |
+
 - Referring to the Configuration parameters in https://docs.ultralytics.com/config/, the configuration alignment of corresponding parameters has been made for train.py, detect.py, val.py, etc.
 
 > ![config_1](./img/config_1.png)
@@ -75,6 +81,7 @@ Currently doing the following work:
 ---
 
 - ... ...
+- 2023/09/20 - add yolov8 gradio demo and continue other work...
 - 2023/01/16 - add train_detect, train_cls and train_seg
 - 2023/01/10 - add yolov8 metrics and logs
 - 2023/01/09 - add val.py and fix some error
